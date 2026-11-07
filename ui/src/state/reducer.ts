@@ -1,5 +1,6 @@
 import type {
   Channel,
+  CompanionState,
   FaceMood,
   FlowAction,
   FlowState,
@@ -28,6 +29,7 @@ const CHANNELS: Channel[] = [
   "focus",
   "reminder",
   "music",
+  "phone",
   "home",
   "idle",
 ];
@@ -83,7 +85,7 @@ export function makeInitialState(now = new Date()): FlowState {
     plan: null,
     step: {
       title: "准备好时，告诉我你想做什么",
-      detail: "说一句话，或挥一下手",
+      detail: "点一下开始，或说一句话",
       minutes: 25,
       remainingMs: 25 * 60 * 1000,
       totalMs: 25 * 60 * 1000,
@@ -91,6 +93,7 @@ export function makeInitialState(now = new Date()): FlowState {
       total: 1,
     },
     phone: { present: false, charging: false },
+    companion: null,
     tasksCount: 0,
     connection: "connecting",
     offline: false,
@@ -160,12 +163,17 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
       };
     case "assistant.say":
       return applyAssistant(base, payload);
+    case "emotion.face":
+      return applyEmotion(base, payload);
     case "plan.draft":
+      return applyPlan(base, payload);
+    case "plan.revised":
       return applyPlan(base, payload);
     case "plan.confirmed":
       return {
         ...base,
         phase: "executing",
+        channelActive: false,
         message: "计划已确认，先做第一步。",
         face: "neutral",
       };
@@ -183,8 +191,17 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
       return {
         ...base,
         phase: "celebrating",
+        channelActive: false,
         face: "excited",
         message: text(payload.message, "完成一步，做得很好。"),
+      };
+    case "reward.feedback":
+      return {
+        ...base,
+        phase: "celebrating",
+        channelActive: false,
+        face: "excited",
+        message: text(payload.message, "这一小步，稳稳的。"),
       };
     case "phone.changed":
       return { ...base, phone: phoneFrom(payload, base.phone) };
@@ -226,6 +243,7 @@ function applyStateSync(
     face: PHASE_FACE[phase],
     message: text(payload.message, PHASE_MESSAGE[phase]),
     phone: phoneFrom(payload.phone, state.phone),
+    companion: companionFrom(payload.companion) ?? state.companion,
     plan,
     step,
     tasksCount: integer(payload.tasks_count, state.tasksCount),
@@ -299,6 +317,17 @@ function applyAssistant(
   };
 }
 
+function applyEmotion(
+  state: FlowState,
+  payload: Record<string, unknown>,
+): FlowState {
+  const emotion = text(payload.emotion, "neutral").toLowerCase();
+  return {
+    ...state,
+    face: EMOTION_FACE[emotion] ?? state.face,
+  };
+}
+
 function applyPlan(
   state: FlowState,
   payload: Record<string, unknown>,
@@ -311,6 +340,7 @@ function applyPlan(
     ...state,
     plan,
     phase: "plan_review",
+    channelActive: false,
     face: PHASE_FACE.plan_review,
     message: "这份计划可以吗？",
   };
@@ -329,6 +359,7 @@ function applyFocus(
   return {
     ...state,
     phase: "executing",
+    channelActive: false,
     face: "neutral",
     step,
     channelData: focusChannel
@@ -418,6 +449,20 @@ function phoneFrom(
   };
 }
 
+function companionFrom(value: unknown): CompanionState | null {
+  const record = asRecord(value);
+  if (Object.keys(record).length === 0) {
+    return null;
+  }
+  return {
+    exp: integer(record.exp, 0),
+    level: integer(record.level, 0),
+    stage: text(record.stage, "幼芽"),
+    streak: integer(record.streak, 0),
+    next_exp: integer(record.next_exp, undefined),
+  };
+}
+
 export function formatClock(date: Date): string {
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
@@ -461,6 +506,7 @@ export function channelLabel(channel: Channel): string {
     focus: "专注计时",
     reminder: "提醒",
     music: "音乐",
+    phone: "手机使用",
     home: "主页",
     idle: "主页",
   };

@@ -29,7 +29,6 @@ real = [
     "gpiozero>=2",
     "lgpio>=0.2",
     "ina219>=0.3",
-    "paj7620",
 ]
 pi = [
     "Pillow>=10",
@@ -44,7 +43,6 @@ packages = [
     "channel",
     "channel.builtin",
     "data",
-    "gesture",
     "hal",
     "hal.mock",
     "hal.real",

@@ -29,7 +29,6 @@ def test_mock_backend_opens_every_device(hal):
         "audio_in",
         "audio_out",
         "phone_stand",
-        "gesture",
     }
     assert all(status.available for status in statuses.values())
 
@@ -136,14 +135,6 @@ def test_phone_state_defaults_to_safe_snapshot(hal):
         "current_ma": 0,
         "distance_mm": 120,
     }
-
-
-def test_gesture_events(hal):
-    received: list[str] = []
-    assert hal.gesture.start(received.append).available
-    hal.gesture.trigger("wave")
-    hal.gesture.stop()
-    assert received == ["wave"]
 
 
 def times_current(payload: dict) -> int:

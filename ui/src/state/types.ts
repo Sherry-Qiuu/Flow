@@ -15,6 +15,7 @@ export type Channel =
   | "focus"
   | "reminder"
   | "music"
+  | "phone"
   | "home"
   | "idle";
 
@@ -62,6 +63,14 @@ export interface PhoneState {
   current_ma?: number;
 }
 
+export interface CompanionState {
+  exp: number;
+  level: number;
+  stage: string;
+  streak: number;
+  next_exp?: number | null;
+}
+
 export interface FlowState {
   phase: Phase;
   channel: Channel;
@@ -76,6 +85,7 @@ export interface FlowState {
   plan: PlanSummary | null;
   step: StepState;
   phone: PhoneState;
+  companion: CompanionState | null;
   tasksCount: number;
   connection: ConnectionStatus;
   offline: boolean;

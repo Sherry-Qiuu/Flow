@@ -167,6 +167,10 @@ sed "s|@FLOW_HOME@|${FLOW_HOME}|g" \
 chmod 0755 /usr/local/bin/flow-diag
 install -m 0755 "${SOURCE_DIR}/scripts/flow-restore" \
   /usr/local/bin/flow-restore
+install -m 0755 "${SOURCE_DIR}/scripts/flow-backup" \
+  /usr/local/bin/flow-backup
+install -m 0755 "${SOURCE_DIR}/scripts/flow-reset" \
+  /usr/local/bin/flow-reset
 
 if [ ! -x "${FLOW_HOME}/.venv/bin/python" ]; then
   python3 -m venv --system-site-packages "${FLOW_HOME}/.venv"
@@ -177,9 +181,6 @@ export PIP_NO_CACHE_DIR=1
 "${VENV_PY}" -m pip install --no-build-isolation "${FLOW_HOME}"
 if [ "${WITH_REAL}" -eq 1 ]; then
   "${VENV_PY}" -m pip install --no-build-isolation "${FLOW_HOME}[pi]"
-  # PAJ7620 is optional: missing it only hides gesture input.
-  "${VENV_PY}" -m pip install --no-cache-dir paj7620 2>/dev/null || \
-    echo "warning: paj7620 not installed; gesture input stays unavailable"
 fi
 if [ "${WITH_OPENCV}" -eq 1 ]; then
   "${VENV_PY}" -m pip install --no-cache-dir opencv-python

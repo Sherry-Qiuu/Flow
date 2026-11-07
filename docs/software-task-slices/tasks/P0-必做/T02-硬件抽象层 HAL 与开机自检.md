@@ -22,7 +22,7 @@
 
 - **SR-19** — 支架：放手机 + 感应 + 充电 + 文件拍照传输（P42）
 - **SR-17** — 屏幕显示表情 + 文字信息（P43）
-- **SR-18** — 语音交互 + 手势交互，代替触屏（P43）
+- **SR-18** — 语音交互 + 触屏交互（手势已取消）（P43）
 
 ## 3. 输入 / 输出
 
@@ -33,7 +33,7 @@
 
 **输出（可交付物）**
 
-- hal 包（display / camera / audio_in / audio_out / phone_stand / gesture）
+- hal 包（display / camera / audio_in / audio_out / phone_stand）
 - hal.mock 假实现，使无硬件的电脑也能跑全部上层功能
 - python -m hal.selftest 自检命令
 

@@ -125,15 +125,3 @@ def test_bus_event_is_broadcast_to_connected_clients(workspace_tmp):
     assert first_event["type"] == "phone.changed"
     assert second_event["type"] == "phone.changed"
     assert first_event["payload"]["present"] is True
-
-
-def test_gesture_service_event_reaches_websocket(workspace_tmp):
-    client, app = make_client(workspace_tmp)
-    with client:
-        with client.websocket_connect("/ws") as websocket:
-            websocket.receive_json()
-            app.state.runtime.hal.hal.gesture.trigger("wave")
-            event = websocket.receive_json()
-    assert event["type"] == "gesture.detected"
-    assert event["payload"]["type"] == "wave"
-    assert event["payload"]["action"] == "confirm"

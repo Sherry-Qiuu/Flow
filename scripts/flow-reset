@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# T28 one-command demo reset (<10s); keeps the current database.
+set -euo pipefail
+FLOW_HOME="${FLOW_HOME:-/opt/flow}"
+PYTHON="${FLOW_HOME}/.venv/bin/python"
+[ -x "${PYTHON}" ] || PYTHON="python3"
+cd "${FLOW_HOME}" 2>/dev/null || true
+exec env PYTHONPATH="${FLOW_HOME}/app" "${PYTHON}" -m demo "$@"

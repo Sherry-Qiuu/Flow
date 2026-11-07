@@ -24,18 +24,17 @@ def test_selftest_reports_every_device_and_writes_db(workspace_tmp):
         hal.close()
     assert report.ok
     assert report.failed == 0
-    assert len(report.checks) == 6
+    assert len(report.checks) == 5
     assert all(check.status == OK for check in report.checks)
     assert report.db_path == str(db_path)
     rows = read_device_status(db_path)
-    assert len(rows) == 6
+    assert len(rows) == 5
     assert {row["device"] for row in rows} == {
         "display",
         "camera",
         "audio_in",
         "audio_out",
         "phone_stand",
-        "gesture",
     }
     assert all(row["status"] == "ok" for row in rows)
 
@@ -79,7 +78,7 @@ def test_selftest_cli_command(workspace_tmp):
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
-    assert "SELF-TEST: 6 OK, 0 FAIL, 0 SKIP" in result.stdout
+    assert "SELF-TEST: 5 OK, 0 FAIL, 0 SKIP" in result.stdout
     assert "[OK" in result.stdout
     assert db_path.exists()
 
@@ -99,4 +98,4 @@ def test_hal_daemon_preflight_is_non_strict(capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["backend"] == "mock"
     assert payload["ok"] is True
-    assert len(payload["checks"]) == 6
+    assert len(payload["checks"]) == 5

@@ -249,17 +249,3 @@ class PhoneStand(Device):
     @abstractmethod
     def state(self) -> PhoneState:
         """Return the latest safe snapshot, even when unavailable."""
-
-
-class Gesture(Device):
-    """Gesture / proximity events used by T09."""
-
-    name = "gesture"
-
-    @abstractmethod
-    def start(self, on_gesture: Callable[[str], None]) -> DeviceStatus:
-        ...
-
-    @abstractmethod
-    def stop(self) -> None:
-        ...

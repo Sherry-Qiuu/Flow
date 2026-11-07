@@ -48,8 +48,16 @@ describe("T05 pages", () => {
       const Page = page.component;
       const html = renderToStaticMarkup(<Page state={page.state} />);
       expect(html.length).toBeGreaterThan(80);
-      expect(html).not.toMatch(/<button|<a\s|<input|<select/);
+      expect(html).not.toMatch(/<a\s|<input|<select/);
     }
+  });
+
+  it("idle exposes large touch actions", () => {
+    const html = renderToStaticMarkup(<Idle state={state()} />);
+    expect(html).toContain("任务");
+    expect(html).toContain("专注 15 分钟");
+    expect(html).toContain("计划");
+    expect(html).toMatch(/<button/);
   });
 
   it("keeps long Chinese step titles inside the executing page", () => {
@@ -94,6 +102,24 @@ describe("T05 pages", () => {
     }
   });
 
+  it("shows the companion stage on idle", () => {
+    const html = renderToStaticMarkup(
+      <Idle
+        state={state({
+          companion: {
+            exp: 12,
+            level: 1,
+            stage: "小苗",
+            streak: 3,
+            next_exp: 30,
+          },
+        })}
+      />,
+    );
+    expect(html).toContain("小苗");
+    expect(html).toContain("Lv.1");
+  });
+
   it("shows the phone stand badge on idle", () => {
     const html = renderToStaticMarkup(
       <Idle
@@ -124,7 +150,8 @@ describe("T05 pages", () => {
     expect(html).toContain("专注计时");
     expect(html).toContain("05:00");
     expect(html).toContain("正在专注");
-    expect(html).not.toMatch(/<button|<a\s/);
+    expect(html).toContain("返回");
+    expect(html).toMatch(/<button/);
   });
 
   it("renders a task channel list", () => {

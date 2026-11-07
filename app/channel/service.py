@@ -37,14 +37,15 @@ class ChannelService:
         *,
         publisher: Any = None,
         subscriber: Any = None,
+        say: Callable[..., Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.machine = machine
         self.publisher = publisher
         self.subscriber = subscriber
+        self.say = say
         self.clock = clock
         self._unsubscribe: Callable[[], None] | None = None
-        self._unsubscribe_gesture: Callable[[], None] | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_text = ""
@@ -56,10 +57,6 @@ class ChannelService:
             self._unsubscribe = self.subscriber.subscribe(
                 topics.SPEECH_FINAL,
                 self._on_speech,
-            )
-            self._unsubscribe_gesture = self.subscriber.subscribe(
-                topics.GESTURE_DETECTED,
-                self._on_gesture,
             )
         self._stop.clear()
         self._thread = threading.Thread(
@@ -75,9 +72,6 @@ class ChannelService:
         if self._unsubscribe is not None:
             self._unsubscribe()
             self._unsubscribe = None
-        if self._unsubscribe_gesture is not None:
-            self._unsubscribe_gesture()
-            self._unsubscribe_gesture = None
         thread = self._thread
         self._thread = None
         if thread is not None and thread is not threading.current_thread():
@@ -88,30 +82,6 @@ class ChannelService:
         self._last_text = text
         self._last_intent = intent
         self._publish(topics.INTENT_PARSED, intent.to_dict())
-        actions = self.machine.handle_intent(intent)
-        self._publish_actions(actions)
-        return actions
-
-    def handle_gesture(self, payload: dict[str, Any]) -> list[Action]:
-        action = str(payload.get("action", ""))
-        mapping = {
-            "confirm": Intent("start", source="gesture"),
-            "next": Intent("next", source="gesture"),
-            "prev": Intent("back", source="gesture"),
-            "extend": Intent("start", source="gesture"),
-            "shorten": Intent("pause", source="gesture"),
-            "finish_step": Intent("finish", source="gesture"),
-            "skip_step": Intent("next", source="gesture"),
-            "channel_next": Intent(
-                "open_tool",
-                tool="tasks",
-                source="gesture",
-            ),
-            "channel_prev": Intent("back", source="gesture"),
-        }
-        intent = mapping.get(action)
-        if intent is None:
-            return []
         actions = self.machine.handle_intent(intent)
         self._publish_actions(actions)
         return actions
@@ -149,12 +119,6 @@ class ChannelService:
                 self._last_error = str(exc)
                 logger.exception("channel speech handling failed")
 
-    def _on_gesture(self, payload: dict[str, Any]) -> None:
-        try:
-            self.handle_gesture(payload)
-        except Exception:
-            logger.exception("channel gesture handling failed")
-
     def _tick_loop(self) -> None:
         while not self._stop.wait(1.0):
             try:
@@ -166,6 +130,19 @@ class ChannelService:
     def _publish_actions(self, actions: list[Action]) -> None:
         for action in actions:
             if action.type == "speak":
+                if self.say is not None:
+                    try:
+                        self.say(
+                            str(action.payload.get("text", "")),
+                            emotion=str(
+                                action.payload.get("emotion", "neutral")
+                            ),
+                            priority=str(
+                                action.payload.get("priority", "dialogue")
+                            ),
+                        )
+                    except Exception:
+                        logger.exception("channel speech action failed")
                 continue
             self._publish(action.type, action.payload)
 

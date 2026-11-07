@@ -152,6 +152,7 @@ class Task:
     subtasks: list[SubTask] = field(default_factory=list)
     created_at: datetime | None = None
     completed: bool = False
+    source: str = "manual"
 
     def __post_init__(self) -> None:
         if not self.id:
@@ -194,6 +195,7 @@ class Task:
             "depends_on": list(self.depends_on),
             "subtasks": [subtask.to_dict() for subtask in self.subtasks],
             "completed": self.completed,
+            "source": self.source,
         }
 
 

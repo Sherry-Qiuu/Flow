@@ -299,50 +299,6 @@ def run_selftest(
         except Exception as exc:
             add("phone_stand", "read", FAIL, str(exc), _elapsed_ms(start))
 
-    # Gesture arrives with T09; missing is a skip, not a boot failure.
-    gesture_status = statuses.get("gesture")
-    if gesture_status is None:
-        add("gesture", "open", SKIP, "device was not opened", 0.0)
-    elif gesture_status.state.value == "missing":
-        add("gesture", "open", SKIP, gesture_status.detail, 0.0)
-    elif not gesture_status.available:
-        add("gesture", "open", FAIL, gesture_status.detail, 0.0)
-    else:
-        start = time.perf_counter()
-        received: list[str] = []
-        try:
-            status = hal.gesture.start(received.append)
-            if not status.available:
-                add("gesture", "listen", FAIL, status.detail, 0.0)
-            else:
-                trigger = getattr(hal.gesture, "trigger", None)
-                if callable(trigger):
-                    trigger("wave")
-                time.sleep(0.01)
-                if received:
-                    add(
-                        "gesture",
-                        "listen",
-                        OK,
-                        f"received {received[0]}",
-                        _elapsed_ms(start),
-                    )
-                else:
-                    add(
-                        "gesture",
-                        "listen",
-                        SKIP,
-                        "listening, no synthetic event",
-                        _elapsed_ms(start),
-                    )
-        except Exception as exc:
-            add("gesture", "listen", FAIL, str(exc), _elapsed_ms(start))
-        finally:
-            try:
-                hal.gesture.stop()
-            except Exception:
-                pass
-
     report.finished_at = datetime.now(timezone.utc)
     if record:
         path = Path(db_path) if db_path is not None else default_db_path()

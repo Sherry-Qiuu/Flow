@@ -118,6 +118,14 @@ class PhoneSessionService:
             **self.store.snapshot(),
         }
 
+    def switch_repo(self, repo: PhoneSessionRepository) -> None:
+        self.repo = repo
+        self.store.repo = repo
+        open_session = repo.open_session()
+        self.store._session_id = (
+            str(open_session["id"]) if open_session is not None else None
+        )
+
     def phone_state(self) -> dict[str, object]:
         state = self.store.stable
         return {

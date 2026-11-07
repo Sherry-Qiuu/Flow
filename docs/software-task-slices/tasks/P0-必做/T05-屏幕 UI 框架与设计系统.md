@@ -46,7 +46,7 @@
 - [ ] 页面：Idle（待机：表情 + 时钟 + 一句话）、Listening、Thinking、PlanReview、Executing（单步大字卡）、Celebrate、Resting、Settings
 - [ ] 组件：FaceExpression（8 种表情状态机）、BigText、StepCard、ProgressRing、Toast、OfflineBadge
 - [ ] 状态管理：单一 reducer 消费 WS 事件；断线时保留最后状态并显示离线角标
-- [ ] 无触屏原则：屏幕上不出现只能点的按钮，所有操作必须同时存在语音/手势的等效路径
+- [ ] 触屏原则：屏幕上的主操作必须有可点按钮，同时保留语音等效路径
 - [ ] 性能：动效用 transform/opacity，避免长列表；字体子集化减少首屏
 
 ## 5. 子任务拆解
@@ -89,7 +89,7 @@ ui/src/
     :root { --scale: calc(100vw / 720); }
     .canvas { width:720px; height:720px; transform: scale(var(--scale)); }
 
-硬规则：屏幕上一个可点元素都不能有，全部由语音/手势等效触发。
+硬规则：主操作有可点按钮，全部操作同时存在语音等效路径；手势已取消。
 ```
 
 ## 8. 验收标准（Definition of Done）

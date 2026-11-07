@@ -5,7 +5,10 @@ Design, planning and build documentation for the Flow single-channel task compan
 | Document set | What it covers |
 | --- | --- |
 | [software-task-slices](software-task-slices/00-README.md) | Software requirements (22 items), architecture and tech stack, 30 independently ownable task cards, priority queue |
-| [deployment](deployment/T01-hardware-runbook.md) | T01 Raspberry Pi bring-up: flash, wiring, install, systemd, display, acceptance; [hardware handoff](deployment/T01-hardware-handoff.md) covers scope, BOM, roles, test matrix and sign-off; [T05/T09 increments](deployment/T05-T09-hardware-handoff.md) cover screen UI and PAJ7620 gesture |
+| [deployment](deployment/T01-hardware-runbook.md) | T01 Raspberry Pi bring-up: flash, wiring, install, systemd, display, acceptance; [hardware handoff](deployment/T01-hardware-handoff.md) covers scope, BOM, roles, test matrix and sign-off; [T05 touch increment](deployment/T05-hardware-handoff.md) covers the 720×720 touchscreen |
+| [install](install.md) | T30 install, upgrade, backup/restore and factory self-check |
+| [demo](demo/storyboard.md) | T28 five-minute storyboard, fallbacks and rehearsal log |
+| [decisions](decisions/android-companion.md) | T23 Android/iOS usage-data boundary and privacy decision |
 | [hardware-tutorials](hardware-tutorials/00-总览与学习路径.md) | 10 build tutorials from unboxing to full assembly, plus wiring, troubleshooting, safety and BOM gap appendices |
 
 ## Software task slices
@@ -20,7 +23,10 @@ Start with [software-task-slices/00-README.md](software-task-slices/00-README.md
 | [04-优先级与执行顺序](software-task-slices/04-优先级与执行顺序.md) | The single execution queue: 30 tasks in 8 dependency waves |
 | `tasks/P0-必做/`, `P1-应做/`, `P2-可选/` | One card per task with scope, interface contract and acceptance checks |
 
-Status: **30 tasks / ~66 person-days** (P0: 18 tasks / 43 days).
+Status: **29 task cards implemented as a mock-first MVP; T09 gesture is canceled**
+because the product moved to a touchscreen. Real hardware, ASR/TTS models,
+VLM/OCR and the Android companion app remain device/optional acceptance
+boundaries (see DEVELOPMENT.md and the task cards' 当前状态).
 
 ## Hardware tutorials
 
@@ -33,7 +39,7 @@ Start with [hardware-tutorials/00-总览与学习路径.md](hardware-tutorials/0
 | H03 | Power system: 12 V pack → buck → Pi 5 |
 | H04 | Digital inputs: push button and hall sensor |
 | H05 | Vibration motor with transistor driver |
-| H06 | I2C gesture sensor |
+| H06 | I2C gesture sensor (archived; gesture canceled) |
 | H07 | CSI camera |
 | H08 | Qi wireless charging module |
 | H09 | Display and enclosure assembly |

@@ -7,8 +7,8 @@
 >
 > **执行手册**：[T01 硬件落地手册](T01-hardware-runbook.md)（逐条命令、预期输出、排错）。
 >
-> **T05/T09 增量**：屏幕 UI、PAJ7620 手势、手机在位/充电的新增硬件验收见
-> [T05/T09 硬件增量交接说明](T05-T09-hardware-handoff.md)。
+> **T05 触屏增量**：720×720 屏幕、触控与 kiosk 验收见
+> [T05 触屏交接说明](T05-hardware-handoff.md)。
 >
 > **参考教程**：[H01 开箱](../hardware-tutorials/H01-开箱核对与工具准备.md)、[A 接线总图](../hardware-tutorials/A-接线总图与引脚分配.md)、
 > [B 故障排查](../hardware-tutorials/B-故障排查手册.md)、[D 安全手册](../hardware-tutorials/D-安全手册与红线.md)。
@@ -47,7 +47,7 @@
 | --- | --- | --- |
 | 一键安装 | [`install.sh`](../../install.sh) | 装 venv、依赖、systemd、kiosk、日志、诊断 |
 | systemd 服务组 | [`deploy/systemd/`](../../deploy/systemd/) | hal 预检 → backend → ui |
-| HAL mock + real | [`app/hal/`](../../app/hal/) | 摄像头/麦克风/扬声器/屏幕/支架/手势 |
+| HAL mock + real | [`app/hal/`](../../app/hal/) | 摄像头/麦克风/扬声器/屏幕/支架 |
 | 开机自检 | `python -m hal.selftest` / `python -m hal.daemon` | 逐设备 OK/FAIL/SKIP，写 `device_status` |
 | 后端骨架 | `uvicorn app.main:app`、`/healthz`、`/ws` | T03：健康检查、状态同步、事件总线 |
 | 显示/kiosk | `flow-display`、`flow-kiosk` | 720×720 HDMI 模式、Chromium 全屏 |
@@ -60,7 +60,7 @@
 | --- | --- | --- | --- |
 | **WP1 电源与基础** | 12V 电池、5V/5A 降压、Pi 5、SD、散热、HDMI 屏 | H01/H02/H03/H09 | 电池供电可开机，`vcgencmd get_throttled` 为 `0x0` |
 | **WP2 显示与结构** | 7" 屏、HDMI/micro-HDMI、外壳、支架、铰链 | H09 | 720×720 显示，屏幕固定可靠 |
-| **WP3 感知** | CSI 摄像头、PAJ7620 手势、A3144 霍尔、INA219 | H04/H06/H07/H08 | 拍照清晰、I2C 可扫描、手机在位可感知 |
+| **WP3 感知** | CSI 摄像头、A3144 霍尔、INA219 | H04/H07/H08 | 拍照清晰、手机在位可感知 |
 | **WP4 音频/反馈** | USB 麦克风、USB 音箱、STOP 按钮、振动马达 | H04/H05 | 录音/放音正常，按钮按下有响应（软件集成见 T04/T16） |
 | **WP5 整机联调** | 装壳、理线、上电、跑 T01/T02 验收 | H10 + 本文 | 第 6 节测试矩阵全绿，`flow-diag` 已归档 |
 
@@ -92,7 +92,7 @@
 | 视频 | micro-HDMI 转 HDMI 线 | 1 | Pi 5 是 micro-HDMI |
 | 摄像头 | IMX219 CSI + 22 针 FPC | 1 | **Pi 5 用 22 针，不是 12 针/15 针** |
 | 音频 | USB 麦克风 + USB 小音箱 | 各 1 | 免驱，`arecord -l` / `aplay -l` 能看到 |
-| 输入 | PAJ7620U2 手势 | 1 | 3.3V，SDA/SCL 接 GPIO2/3 |
+| 输入 | 720×720 触屏 | 1 | HDMI/DSI + 触控 USB |
 | 感知 | A3144 霍尔 ×2 | 2 | 手机在位/磁吸；必须 10kΩ 上拉 |
 | 感知 | INA219（充电电流） | 1 | I2C 0x40；无线充电流检测用 |
 | 交互 | 12mm 自复位金属按钮 | 1 | STOP；GPIO17 |
@@ -145,8 +145,8 @@
                                 │ Python HAL
       ┌──────────────┬──────────┼──────────┬──────────────┐
       │              │          │          │              │
-   HDMI 屏        CSI 摄像头   USB 音频   GPIO27/INA219   I2C 手势
-   720×720        22 针 FPC    麦克风/音箱  手机在位/充电   PAJ7620
+   HDMI 屏        CSI 摄像头   USB 音频   GPIO27/INA219
+   720×720        22 针 FPC    麦克风/音箱  手机在位/充电
 ```
 
 ### 3.1 服务与端口
@@ -170,8 +170,7 @@
 | 手机在位霍尔 | **GPIO27** | **13** | 输入 | A3144 OUT；**10kΩ 上拉到 3.3V** |
 | STOP 按钮 | GPIO17 | 11 | 输入 | 按钮另一端接 GND；T04 集成 |
 | 振动马达 | GPIO18 | 12 | 输出 | 经 1kΩ → S8050 B；马达并联 1N4148；T16 集成 |
-| 手势 SDA | GPIO2 | 3 | I2C | PAJ7620，3.3V |
-| 手势 SCL | GPIO3 | 5 | I2C | PAJ7620，3.3V |
+| 触控 USB | USB | — | 触摸输入，evtest 验证 |
 | 状态灯（可选） | GPIO22 | 15 | 输出 | LED + 限位电阻 |
 | 人体感应（可选） | GPIO23 | 16 | 输入 | HC-SR501 / LD2410 |
 | 无线充开关（可选） | GPIO24 | 18 | 输出 | MOSFET/继电器 |
@@ -199,9 +198,8 @@ FLOW_PHONE_POLL_MS=100
 | --- | --- | --- |
 | T01 服务/kiosk/诊断 | 已交付 | 见本文第 5 节 |
 | T02 HAL/自检 | 已交付（mock 全绿，真实待上机） | 真实驱动需在 Pi 上验证 |
-| T03 后端/WS/健康检查 | 已交付 | scheduler 目前 `disabled`；gesture 子系统已接入 |
+| T03 后端/WS/健康检查 | 已交付 | scheduler/phone/voice 子系统已接入 |
 | T05 正式 UI | 已交付 | React + Vite + TS + Tailwind + Motion；720 画布、8 表情、自动重连 |
-| T09 手势真驱动 | 核心已交付 | PAJ7620 驱动 + detector/presence + `gesture.detected`；T04 路由已接，真实 ToF 待接 |
 | T04 STOP/工具路由 | 已交付 | 6 通道状态机/意图路由已完成；STOP 物理按钮待硬件验证 |
 | T06 语音管线 | 核心已交付 | 采集/VAD/ASR 降级/打断已完成；真实 ASR 模型/云账号待配 |
 | T10 数据层 | 已交付 | SQLite 14 表、迁移、DAO、备份/恢复 |
@@ -210,7 +208,7 @@ FLOW_PHONE_POLL_MS=100
 | T15 提醒调度 | 未完成 | 健康检查里显示 `disabled` 是正常 |
 
 > 交接时不要把“硬件装好”说成“功能全部完成”。T01/T02 验收和 T16/STOP 硬件
-> 仍需上机；T04/T06/T09/T10/T20 的软件部分已交付，真机参数/模型仍需联调。
+> 仍需上机；T04/T06/T10/T20 的软件部分已交付，真机参数/模型仍需联调。
 
 ---
 
@@ -251,7 +249,7 @@ FLOW_PHONE_POLL_MS=100
    - INA219 VCC→3.3V/5V（按模块），GND→GND，SDA/SCL→GPIO2/3；地址 0x40。
    - STOP：GPIO17 ↔ 按钮 ↔ GND。
    - 振动马达：GPIO18→1kΩ→S8050 B，马达接 3.3V/5V 与 C，E→GND，马达并联 1N4148。
-2. 上电，`i2cdetect -y 1` 应看到 `0x40`（INA219）和 `0x73`（PAJ7620，若已接）。
+2. 上电，`i2cdetect -y 1` 应看到 `0x40`（INA219）；触摸设备用 `evtest` 确认。
 3. 用磁铁靠近/离开霍尔，确认 GPIO27 电平变化；用万用表或 gpio 测试脚本。
 4. 手机放上支架，确认霍尔触发；INA219 电流读数变化。
 
@@ -259,7 +257,7 @@ FLOW_PHONE_POLL_MS=100
 
 ### Phase 4 · 结构、无线充与整机（2–3 小时）
 
-1. 按 H09 装屏幕、摄像头、手势、支架、电池、降压、无线充。
+1. 按 H09 装屏幕、触控、摄像头、支架、电池、降压、无线充。
 2. 无线充必须贴铁氧体隔磁片；线圈与金属保持距离。
 3. 理线：电源线、HDMI、FPC 分开走，避免压伤；用扎带/胶带固定。
 4. 装壳前再跑一次台面自检；装壳后复测屏幕/摄像头/触摸（如有）。
@@ -334,9 +332,8 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/gesture/phone/voice/websocket`。
-`scheduler` 显示 `disabled` 是正常，T15 还没做；没有接 PAJ7620 时 `gesture` 也显示
-`disabled`，没配 ASR 时 `voice` 为 `disabled`，都不影响后端启动。
+期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/phone/voice/websocket`。
+`scheduler` 在配置启用时为 `ok`；没配 ASR 时 `voice` 为 `disabled`，都不影响后端启动。
 
 WebSocket：
 
@@ -383,7 +380,7 @@ sudo flow-diag --with-selftest
 | T01-01 | 系统启动 | 接电源/电池开机 | 90 秒内进入 Flow 界面 | | 计时视频 |
 | T01-02 | 网络/SSH | `ssh flow@flow.local` | 能登录 | | 终端截图 |
 | T01-03 | 服务状态 | `systemctl status flow-hal flow-backend flow-ui` | 三个服务 active | | 截图 |
-| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/gesture/phone/voice/websocket 可见 | | JSON |
+| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/phone/voice/websocket 可见 | | JSON |
 | T01-05 | WS | 5.4 的 Python 脚本 | 收到 `state.sync` | | 终端输出 |
 | T01-06 | 中文 | 屏幕显示 Flow UI | 无方块/截断 | | 屏幕照片 |
 | T01-07 | 分辨率 | 屏幕设置/照片 | 720×720（或 T05 设计画布） | | 照片 |
@@ -397,7 +394,7 @@ sudo flow-diag --with-selftest
 | T02-06 | 充电电流 | 手机放上无线充 | INA219 电流变化 | | 读数 |
 | T02-07 | 拔摄像头降级 | 运行中拔 CSI/USB | 服务不崩，health 显示 degraded | | 日志 |
 | T20-HW | 支架结构 | 开合/磁吸/充电 | 顺畅、不掉、能充 | | 视频 |
-| T09-HW | 手势硬件 | `i2cdetect` + 手势测试 | I2C 可扫、能识别挥手 | | 日志 |
+| T05-HW | 触屏 | `evtest` + 点按 UI | 触摸坐标正确、按钮可触发 | | 照片 |
 | T16-HW | 振动硬件 | 手动给 GPIO18 高电平 | 马达震动 | | 视频 |
 | T04-HW | STOP 硬件 | 万用表/引脚测试 | 按下导通 | | 记录 |
 
@@ -431,7 +428,7 @@ evidence/
 1. **10 分钟**：软件演示 `/healthz`、`/ws`、`flow-hal` 自检。
 2. **15 分钟**：硬件走线/结构展示，指出改过的针脚和缺口。
 3. **20 分钟**：按第 6 节逐项验收，FAIL 项写清现象。
-4. **10 分钟**：已知限制和后续任务（T04/T09/T16/T20/T05）。
+4. **10 分钟**：已知限制和后续任务（T04/T16/T20/T05）。
 5. **5 分钟**：签字，确定下次复测时间。
 
 ### 7.3 交接判定
@@ -439,7 +436,7 @@ evidence/
 | 结论 | 条件 |
 | --- | --- |
 | **通过** | T01-01~09、T02-01~07 全部 PASS，证据齐全 |
-| **有条件通过** | T01/T02 核心 PASS，个别非阻塞项（如手势/振动/无线充）待后续；需写责任人和日期 |
+| **有条件通过** | T01/T02 核心 PASS，个别非阻塞项（如触控/振动/无线充）待后续；需写责任人和日期 |
 | **不通过** | 摄像头/麦克风/屏幕/电源任一核心不可用；或 5V 进 GPIO、电池反接、过热等安全问题未修复 |
 
 ### 7.4 交接包清单
@@ -466,7 +463,7 @@ evidence/
 | 麦克风/音箱 missing | `arecord -l`/`aplay -l` | 换 USB 口；确认是默认设备 | 硬件 |
 | 手机在位不变化 | GPIO27、10k 上拉、共地 | 万用表测电平；确认磁铁位置 | 硬件 |
 | INA219 无读数 | `i2cdetect -y 1`、0x40 | 查 SDA/SCL、供电、地址 | 硬件 |
-| `flow-hal` FAIL | journal + `device_status` | 按失败设备查；手势缺失是 SKIP | 软件/硬件 |
+| `flow-hal` FAIL | journal + `device_status` | 按失败设备查；触控不在 HAL，使用 evtest | 软件/硬件 |
 | 后端起不来 | `journalctl -u flow-backend` | 看端口/配置/DB 权限 | 软件 |
 | UI 起不来 | `journalctl -u flow-ui` | 查 xinit/openbox/chromium/tty1 | 软件 |
 | 发热/重启 | `vcgencmd get_throttled`、电源 | 换 5A 电源/查降压/散热 | 硬件 |
@@ -507,7 +504,7 @@ Pi 型号：__________    SD 卡：__________
 [ ] T02-06 INA219 电流变化
 [ ] T02-07 拔摄像头服务不崩
 [ ] T20-HW 支架/磁吸/无线充
-[ ] T09-HW 手势 I2C/挥手
+[ ] T05-HW 触屏坐标/按钮
 [ ] T16-HW 振动马达
 [ ] T04-HW STOP 按钮
 

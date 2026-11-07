@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# T30: create a timestamped Flow backup without stopping the service.
+set -euo pipefail
+FLOW_HOME="${FLOW_HOME:-/opt/flow}"
+PYTHON="${FLOW_HOME}/.venv/bin/python"
+[ -x "${PYTHON}" ] || PYTHON="python3"
+exec env PYTHONPATH="${FLOW_HOME}/app" \
+  "${PYTHON}" -m data.backup_cli \
+  --db "${FLOW_DB:-${FLOW_HOME}/data/flow.db}" \
+  --backup-dir "${FLOW_HOME}/data/backup" "$@"

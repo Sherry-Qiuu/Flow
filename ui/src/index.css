@@ -42,10 +42,42 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-button,
-a,
-[role="button"] {
-  pointer-events: none;
+/* Touch controls: this product now runs on a 720×720 touchscreen. */
+.touch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+  width: 100%;
+}
+
+.touch-button {
+  min-height: 56px;
+  padding: 12px 22px;
+  border: 1px solid var(--flow-line);
+  border-radius: 16px;
+  background: rgba(48, 39, 32, 0.9);
+  color: var(--flow-text);
+  font: inherit;
+  font-size: 21px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.touch-button--primary {
+  border-color: rgba(240, 163, 94, 0.65);
+  background: rgba(111, 72, 39, 0.9);
+  color: #fff6e8;
+}
+
+.touch-button:active {
+  transform: scale(0.97);
+}
+
+.touch-button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .stage {
@@ -558,6 +590,29 @@ a,
   height: 7px;
   border-radius: 50%;
   background: currentColor;
+}
+
+/* Companion (T17) */
+.companion-badge {
+  position: absolute;
+  top: 128px;
+  right: 30px;
+  z-index: 4;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--flow-muted);
+  text-align: right;
+}
+
+.companion-badge__stage {
+  color: var(--flow-amber);
+  font-size: 18px;
+}
+
+.companion-badge__meta {
+  font-size: 14px;
 }
 
 /* Overlays */

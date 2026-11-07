@@ -18,7 +18,6 @@ from hal.contracts import (
     DeviceStatus,
     Display,
     EventPublisher,
-    Gesture,
     PhoneStand,
 )
 from hal.mock import (
@@ -26,7 +25,6 @@ from hal.mock import (
     MockAudioOut,
     MockCamera,
     MockDisplay,
-    MockGesture,
     MockPhoneStand,
 )
 from hal.real import (
@@ -34,7 +32,6 @@ from hal.real import (
     RealAudioOut,
     RealCamera,
     RealDisplay,
-    RealGesture,
     RealPhoneStand,
 )
 
@@ -47,7 +44,6 @@ DEVICE_NAMES = (
     "audio_in",
     "audio_out",
     "phone_stand",
-    "gesture",
 )
 
 
@@ -66,7 +62,6 @@ class Hal:
     audio_in: AudioIn
     audio_out: AudioOut
     phone_stand: PhoneStand
-    gesture: Gesture
     fallbacks: dict[str, str] = field(default_factory=dict)
 
     def devices(self) -> dict[str, Device]:
@@ -76,7 +71,6 @@ class Hal:
             "audio_in": self.audio_in,
             "audio_out": self.audio_out,
             "phone_stand": self.phone_stand,
-            "gesture": self.gesture,
         }
 
     def open_all(self) -> dict[str, DeviceStatus]:
@@ -147,7 +141,6 @@ def _mock_device(name: str, publisher: EventPublisher) -> Device:
         "audio_in": lambda: MockAudioIn(publisher),
         "audio_out": lambda: MockAudioOut(publisher),
         "phone_stand": lambda: MockPhoneStand(publisher),
-        "gesture": lambda: MockGesture(publisher),
     }
     return factories[name]()
 
@@ -159,7 +152,6 @@ def _real_device(name: str, publisher: EventPublisher) -> Device:
         "audio_in": RealAudioIn,
         "audio_out": RealAudioOut,
         "phone_stand": lambda: RealPhoneStand(publisher),
-        "gesture": RealGesture,
     }
     return factories[name]()
 

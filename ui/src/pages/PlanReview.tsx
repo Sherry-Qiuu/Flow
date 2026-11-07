@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { TouchButton } from "../components/TouchButton";
+import { confirmPlan, sendIntent } from "../app/touch";
 
 export function PlanReview({ state }: PageProps) {
   const items = state.plan?.items.slice(0, 3) ?? [];
@@ -7,7 +9,7 @@ export function PlanReview({ state }: PageProps) {
   return (
     <PageShell
       className="plan-review"
-      footer="说“开始”确认，或挥手"
+      footer="点“确认”开始执行"
     >
       <p className="eyebrow">计划草案</p>
       <h1 className="page__title">今天先做这些</h1>
@@ -39,6 +41,22 @@ export function PlanReview({ state }: PageProps) {
           还有 {totalItems - 3} 步，确认后再看
         </p>
       ) : null}
+      <div className="touch-actions">
+        <TouchButton
+          label="确认，开始"
+          variant="primary"
+          disabled={!state.plan?.plan_id}
+          onClick={() =>
+            state.plan?.plan_id
+              ? confirmPlan(state.plan.plan_id)
+              : sendIntent("确认")
+          }
+        />
+        <TouchButton
+          label="再改改"
+          onClick={() => sendIntent("返回")}
+        />
+      </div>
     </PageShell>
   );
 }

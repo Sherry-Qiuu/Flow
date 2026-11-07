@@ -11,16 +11,32 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from bus.event_bus import EventBus
+from analytics.collector import AnalyticsService
+from analytics.distraction import DistractionService
+from analytics.load import LoadService
+from analytics.weekly import WeeklyReportService
 from channel.base import ChannelContext
 from channel.builtin import build_registry
 from channel.machine import ChannelMachine
 from channel.service import ChannelService
+from capture.service import TaskCaptureService
 from data.backup import DailyBackup
 from data.database import DEFAULT_USER_ID
 from data.repositories import Repositories, repositories
-from gesture.service import GestureService
+from degrade import DegradeMatrix
+from demo.service import DemoService
+from dialogue.policy import Dialogue
+from emotion.celebrate import CelebrateService
+from emotion.companion import CompanionService
+from focus.service import FocusService
 from hal.factory import Hal
+from phone.contract import PhoneContractService
+from phone.inbox import FileInbox
 from phone.service import PhoneSessionService
+from phone.usage import UsageService
+from plan.service import PlanService
+from recovery import RecoveryReport
+from users.service import UserService
 from service.config import Settings
 from service.db import Database
 from service.hal_service import HalService
@@ -30,6 +46,8 @@ from service.status import ServiceStatus
 from service.ws import WebSocketHub
 from voice.asr import build_asr
 from voice.pipeline import SpeechPipeline
+from voice.say import SayService, SaySettings
+from voice.tts import EspeakTts
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +76,27 @@ class Runtime:
         )
         self.hal = HalService(settings.hal, self.bus, hal)
         self.scheduler = SchedulerService(settings.scheduler)
-        self.gesture: GestureService | None = None
         self.phone_sessions: PhoneSessionService | None = None
         self.repos: Repositories | None = None
         self.channels: ChannelService | None = None
         self.voice: SpeechPipeline | None = None
+        self.say_service: SayService | None = None
+        self.phone_contract: PhoneContractService | None = None
+        self.capture: TaskCaptureService | None = None
+        self.plan_service: PlanService | None = None
+        self.focus: FocusService | None = None
+        self.companion: CompanionService | None = None
+        self.celebrate: CelebrateService | None = None
+        self.dialogue = Dialogue()
+        self.users: UserService | None = None
+        self.analytics: AnalyticsService | None = None
+        self.distractions: DistractionService | None = None
+        self.load: LoadService | None = None
+        self.weekly: WeeklyReportService | None = None
+        self.inbox: FileInbox | None = None
+        self.usage: UsageService | None = None
+        self.degrade = DegradeMatrix(self.hal)
+        self.recovery = RecoveryReport(settings.data.dir)
         self.hub = WebSocketHub(self.bus, self.snapshot)
         self.state = RuntimeState()
         self.started_at: datetime | None = None
@@ -88,22 +122,84 @@ class Runtime:
             self.db.connection,
             DEFAULT_USER_ID,
         )
+        self.users = UserService(
+            self.db.connection,
+            active_user_id=DEFAULT_USER_ID,
+        )
         await self._start("hal", self.hal.start, thread=True)
         hal = self.hal.hal
-        self.gesture = GestureService(
-            self.settings.gesture,
-            self.bus,
-            gesture=hal.gesture if hal is not None else None,
-            phone_stand=hal.phone_stand if hal is not None else None,
-            subscriber=self.bus,
+        self.say_service = SayService(
+            tts=EspeakTts(),
+            audio_out=hal.audio_out if hal is not None else None,
+            publisher=self.bus,
+            settings=SaySettings(
+                cache_dir=str(self.settings.data.dir / "audio" / "cache")
+            ),
         )
-        await self._start("gesture", self.gesture.start)
+        self.say_service.start()
         self.phone_sessions = PhoneSessionService(
             hal.phone_stand if hal is not None else None,
             self.repos.phone_sessions,
             publisher=self.bus,
         )
         await self._start("phone", self.phone_sessions.start)
+        self.capture = TaskCaptureService(
+            self.repos,
+            publisher=self.bus,
+            camera=hal.camera if hal is not None else None,
+            inbox=str(self.settings.data.dir / "inbox"),
+        )
+        self.plan_service = PlanService(self.repos, publisher=self.bus)
+        self.analytics = AnalyticsService(
+            self.repos,
+            publisher=self.bus,
+        )
+        self.distractions = DistractionService(
+            self.repos,
+            publisher=self.bus,
+        )
+        self.weekly = WeeklyReportService(
+            self.repos,
+            self.analytics,
+            distractions=self.distractions,
+            export_dir=self.settings.data.dir / "exports",
+        )
+        self.load = LoadService(
+            self.repos,
+            distractions=self.distractions,
+            publisher=self.bus,
+            say=self.say_service,
+        )
+        self.inbox = FileInbox(
+            self.settings.data.dir / "inbox",
+            publisher=self.bus,
+        )
+        self.usage = UsageService(
+            self.settings.data.dir / "phone_usage.json",
+        )
+        self.companion = CompanionService(
+            self.repos,
+            publisher=self.bus,
+        )
+        self.celebrate = CelebrateService(
+            self.companion,
+            publisher=self.bus,
+            say=self.say_service,
+            subscriber=self.bus,
+        )
+        self.focus = FocusService(
+            self.repos,
+            publisher=self.bus,
+            say=self.say_service,
+            store_path=self.settings.data.dir / "focus_state.json",
+        )
+        self.phone_contract = PhoneContractService(
+            self.repos.phone_sessions,
+            publisher=self.bus,
+            say=self.say_service,
+            subscriber=self.bus,
+        )
+        await self._start("contract", self.phone_contract.start)
         self.machine = ChannelMachine(
             build_registry(),
             ChannelContext(
@@ -116,8 +212,12 @@ class Runtime:
             self.machine,
             publisher=self.bus,
             subscriber=self.bus,
+            say=self.say_service.say,
         )
         await self._start("channel", self.channels.start)
+        await self._start("celebrate", self.celebrate.start)
+        await self._start("focus", self.focus.start)
+        self.load.start()
         self.voice = SpeechPipeline(
             hal.audio_in if hal is not None else None,
             build_asr(self.settings.voice),
@@ -126,6 +226,9 @@ class Runtime:
             settings=self.settings.voice,
         )
         await self._start("voice", self.voice.start)
+        self.scheduler.repo = self.repos.reminders
+        self.scheduler.publisher = self.bus
+        self.scheduler.say = self.say_service
         await self._start("scheduler", self.scheduler.start)
         await self._start("websocket", self.hub.start)
         logger.info(
@@ -147,10 +250,18 @@ class Runtime:
             self.voice.stop()
         if self.channels is not None:
             self.channels.stop()
+        if self.load is not None:
+            self.load.stop()
+        if self.focus is not None:
+            self.focus.stop()
+        if self.celebrate is not None:
+            self.celebrate.stop()
+        if self.phone_contract is not None:
+            self.phone_contract.stop()
         if self.phone_sessions is not None:
             self.phone_sessions.stop()
-        if self.gesture is not None:
-            self.gesture.stop()
+        if self.say_service is not None:
+            self.say_service.stop()
         self.backup.stop()
         await asyncio.to_thread(self.hal.stop)
         await asyncio.to_thread(self.db.stop)
@@ -222,8 +333,62 @@ class Runtime:
             },
         }
 
+    def switch_user(self, user_id: str) -> dict[str, Any]:
+        if self.users is None:
+            raise RuntimeError("users are not ready")
+        user = self.users.switch(user_id)
+        repos = self.users.repos(user_id)
+        self.repos = repos
+        if self.capture is not None:
+            self.capture.repos = repos
+        if self.plan_service is not None:
+            self.plan_service.repos = repos
+        if self.companion is not None:
+            self.companion.repos = repos
+        if self.analytics is not None:
+            self.analytics.repos = repos
+        if self.distractions is not None:
+            self.distractions.repos = repos
+        if self.weekly is not None:
+            self.weekly.repos = repos
+        if self.load is not None:
+            self.load.repos = repos
+        if self.focus is not None:
+            self.focus.switch_user(
+                repos,
+                self.settings.data.dir / f"focus_state_{user_id}.json",
+            )
+        if self.phone_sessions is not None:
+            self.phone_sessions.switch_repo(repos.phone_sessions)
+        if self.phone_contract is not None:
+            if self.phone_contract.active is not None:
+                self.phone_contract.end("user_switch")
+            self.phone_contract.repo = repos.phone_sessions
+        if self.channels is not None:
+            self.channels.machine.ctx.repos = repos
+            self.channels.machine.ctx.user_id = user_id
+        if self.scheduler.settings.enabled:
+            self.scheduler.stop()
+            self.scheduler.repo = repos.reminders
+            self.scheduler.publisher = self.bus
+            self.scheduler.say = self.say_service
+            self.scheduler.start()
+        return {"user": user, "active": user_id}
+
     def snapshot(self) -> dict[str, Any]:
         statuses = self._health_statuses()
+        channel_state = (
+            self.channels.snapshot()["current"]
+            if self.channels is not None
+            else None
+        )
+        if (
+            self.phone_contract is not None
+            and self.phone_contract.active is not None
+        ):
+            channel_state = self.phone_contract.active.snapshot(
+                self.phone_contract.now_fn()
+            )
         return {
             "version": self.settings.app.version,
             "started_at": self._started_at_iso(),
@@ -231,11 +396,7 @@ class Runtime:
             "uptime_s": self._uptime(),
             "phase": self.state.phase,
             "channel": self.state.channel,
-            "channel_state": (
-                self.channels.snapshot()["current"]
-                if self.channels is not None
-                else None
-            ),
+            "channel_state": channel_state,
             "subsystems": {
                 name: status.to_dict()
                 for name, status in statuses.items()
@@ -256,20 +417,59 @@ class Runtime:
                 if self.voice is not None
                 else None
             ),
-            "gesture": (
-                self.gesture.snapshot()
-                if self.gesture is not None
-                else {"enabled": False, "started": False}
+            "say": (
+                self.say_service.health()
+                if self.say_service is not None
+                else None
             ),
+            "phone_contract": (
+                self.phone_contract.snapshot()
+                if self.phone_contract is not None
+                else None
+            ),
+            "scheduler": self.scheduler.snapshot(),
+            "companion": (
+                self.companion.state()
+                if self.companion is not None
+                else None
+            ),
+            "active_user": (
+                self.users.active_user_id
+                if self.users is not None
+                else DEFAULT_USER_ID
+            ),
+            "degrade": self.degrade.snapshot(),
+            "recovery": self.recovery.snapshot(),
+            "step": (
+                self.focus.snapshot()
+                if self.focus is not None
+                and self.focus.state.status != "idle"
+                else None
+            ),
+            "focus": (
+                self.focus.snapshot()
+                if self.focus is not None
+                else None
+            ),
+            "plan": (
+                self.repos.plans.get(self.focus.state.plan_id).to_dict()
+                if self.repos is not None
+                and self.focus is not None
+                and self.focus.state.plan_id
+                and self.repos.plans.get(self.focus.state.plan_id)
+                is not None
+                else None
+            ),
+            "capture": {
+                "camera": bool(
+                    self.hal.hal is not None
+                    and self.hal.hal.camera is not None
+                ),
+            },
             "ui": {"size": self.settings.ui.size},
         }
 
     def _health_statuses(self) -> dict[str, ServiceStatus]:
-        gesture_status = (
-            self.gesture.health()
-            if self.gesture is not None
-            else None
-        )
         phone_status = (
             self.phone_sessions.health()
             if self.phone_sessions is not None
@@ -284,18 +484,6 @@ class Runtime:
             "db": self.db.health(),
             "hal": self.hal.health(),
             "scheduler": self.scheduler.health(),
-            "gesture": (
-                ServiceStatus(
-                    "gesture",
-                    gesture_status.state,
-                    gesture_status.detail,
-                )
-                if gesture_status is not None
-                else ServiceStatus.disabled(
-                    "gesture",
-                    "gesture service not started",
-                )
-            ),
             "phone": (
                 ServiceStatus(
                     "phone",

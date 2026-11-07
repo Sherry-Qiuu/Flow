@@ -128,28 +128,21 @@ def test_hardware_handoff_doc_covers_team_handoff():
     assert "T01" in text and "T02" in text
 
 
-def test_t05_t09_hardware_increment_handoff():
-    path = ROOT / "docs/deployment/T05-T09-hardware-handoff.md"
+def test_t05_touch_hardware_handoff():
+    path = ROOT / "docs/deployment/T05-hardware-handoff.md"
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
     for token in (
         "T05",
-        "T09",
-        "屏幕增量",
-        "手势增量",
-        "PAJ7620",
-        "0x73",
-        "0x20",
+        "触屏",
         "720×720",
-        "i2cdetect",
-        "gesture.detected",
-        "phone_place",
-        "ToF",
-        "T05-HW-06",
-        "T09-HW-07",
+        "evtest",
+        "T05-HW-01",
+        "T05-HW-08",
         "签收",
     ):
         assert token in text, token
+    assert "PAJ7620" not in text
     assert "T01-hardware-handoff.md" in text
     assert "T01-hardware-runbook.md" in text
 

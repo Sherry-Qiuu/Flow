@@ -10,8 +10,8 @@
 >
 > 团队分工、物料、测试矩阵和签收表见 [T01 硬件交接说明](T01-hardware-handoff.md)。
 >
-> T05 屏幕 UI / T09 PAJ7620 手势的增量验收见
-> [T05/T09 硬件增量交接说明](T05-T09-hardware-handoff.md)。
+> T05 触屏的增量验收见
+> [T05 触屏交接说明](T05-hardware-handoff.md)。
 
 ## 0. 先明确：哪些我做、哪些你做
 
@@ -44,7 +44,7 @@
 | --- | --- | --- | --- |
 | 手机在位（霍尔 A3144） | **GPIO27** | **13** | 输出接 GPIO27，**必须 10kΩ 上拉到 3.3V** |
 | STOP 按钮（T04 用） | GPIO17 | 11 | 按钮另一端接 GND |
-| 手势 PAJ7620 SDA/SCL | GPIO2/GPIO3 | 3/5 | I2C1，3.3V，线越短越稳 |
+| 触控 USB | USB | — | 触摸输入，evtest 验证 |
 | 振动马达（T16 用） | GPIO18 | 12 | 经三极管，必须加续流二极管 |
 | 摄像头 | CSI | — | Pi 5 用 CAM0/CAM1，注意 FPC 方向 |
 | 显示 | HDMI0（Pi 5） | — | 优先 HDMI，避免 DSI 驱动问题 |
@@ -146,7 +146,7 @@ sudo systemctl restart flow-hal
 journalctl -u flow-hal -n 80 --no-pager
 ```
 
-预期看到 6 个设备的 `OK`（没有接手势传感器时可能是 `SKIP`）：
+预期看到 5 个设备的 `OK`（没有接传感器时可能是 `SKIP`）：
 
 ```text
 [OK  ] display ...
@@ -154,7 +154,7 @@ journalctl -u flow-hal -n 80 --no-pager
 [OK  ] audio_in ...
 [OK  ] audio_out ...
 [OK  ] phone_stand ...
-[OK  ] gesture ...
+[OK  ] phone_stand ...
 SELF-TEST: 6 OK, 0 FAIL, 0 SKIP
 ```
 
@@ -176,18 +176,9 @@ ls -lh /tmp/test.jpg
 arecord -d 1 -f S16_LE -r 16000 -c 1 /tmp/test.wav
 aplay /tmp/test.wav
 
-# I2C 扫描：INA219 应在 0x40，手势 PAJ7620 通常在 0x73
+# I2C 扫描：INA219 应在 0x40；触摸设备用 evtest 确认
 i2cdetect -y 1
 ```
-
-PAJ7620 还需要 Python 驱动；安装脚本会尝试，失败时可以手动补：
-
-```bash
-sudo /opt/flow/.venv/bin/pip install paj7620
-sudo systemctl restart flow-backend
-```
-
-手势服务缺失时 `/healthz` 里 `gesture` 会显示 `disabled`，不会影响摄像头/语音。
 
 ## 7. 启动后端并验证接口
 
@@ -197,9 +188,9 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`gesture`、`phone`、`voice`、`websocket`。
-`scheduler` 为 `disabled` 是 T15 未实现；没配 ASR 时 `voice` 也是 `disabled`，都不影响其他服务。
-`scheduler` 当前是 `disabled`，因为 T15 还没实现，这是预期状态。
+预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`phone`、`voice`、`websocket`。
+`scheduler` 在配置启用时为 `ok`；没配 ASR 时 `voice` 是 `disabled`，不影响其他服务。
+提醒调度由 T15 管理；没有配置提醒时它仍为 `ok`，只是队列为空。
 
 WebSocket 连接测试（用 venv 里的 websockets）：
 
@@ -303,7 +294,7 @@ i2cdetect -y 1
 | 摄像头缺失 | `rpicam-hello --list-cameras` | 断电重插 FPC；确认没有启用 legacy camera |
 | 麦克风缺失 | `arecord -l` | 换 USB 口；`usermod -aG audio flow` 后重启 |
 | 支架一直 absent | `i2cdetect -y 1` / 万用表 | 霍尔 GPIO27、10kΩ 上拉、共地；微动一端 GPIO27 一端 GND |
-| `flow-hal` 失败 | `journalctl -u flow-hal` | 看具体设备；手势传感器缺失是 SKIP，不影响后端启动 |
+| `flow-hal` 失败 | `journalctl -u flow-hal` | 看具体设备；触控用 evtest 检查 |
 | 后端 502/连不上 | `systemctl status flow-backend` | 看 `/healthz`；单 worker 是强制的，不要加 `--workers 2` |
 | 断电后 SD 卡损坏 | 是否 A2 卡 | 备份 `data/`；可选 overlayfs（见 T01 卡风险项） |
 

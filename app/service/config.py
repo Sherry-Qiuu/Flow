@@ -10,7 +10,6 @@ from typing import Any
 
 import yaml
 
-from gesture.config import GestureSettings
 from planner.timeutil import tz_for
 from voice.config import SpeechSettings
 
@@ -52,17 +51,7 @@ _DEFAULTS: dict[str, Any] = {
         "backend": "auto",
     },
     "scheduler": {
-        "enabled": False,
-    },
-    "gesture": {
         "enabled": True,
-        "approach_cm": 60.0,
-        "leave_cm": 300.0,
-        "leave_hold_s": 60.0,
-        "cooldown_s": 1.5,
-        "debounce_frames": 5,
-        "min_votes": 2,
-        "poll_ms": 50,
     },
     "voice": {
         "enabled": True,
@@ -115,7 +104,7 @@ class HalSettings:
 
 @dataclass(frozen=True)
 class SchedulerSettings:
-    enabled: bool = False
+    enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -138,7 +127,6 @@ class Settings:
     scheduler: SchedulerSettings = field(
         default_factory=SchedulerSettings
     )
-    gesture: GestureSettings = field(default_factory=GestureSettings)
     voice: SpeechSettings = field(default_factory=SpeechSettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     ui: UiSettings = field(default_factory=UiSettings)
@@ -165,13 +153,6 @@ class Settings:
             },
             "hal": {"backend": self.hal.backend},
             "scheduler": {"enabled": self.scheduler.enabled},
-            "gesture": {
-                "enabled": self.gesture.enabled,
-                "approach_cm": self.gesture.approach_cm,
-                "leave_cm": self.gesture.leave_cm,
-                "leave_hold_s": self.gesture.leave_hold_s,
-                "cooldown_s": self.gesture.cooldown_s,
-            },
             "voice": {
                 "enabled": self.voice.enabled,
                 "sample_rate": self.voice.sample_rate,
@@ -266,16 +247,6 @@ def load_settings(
     scheduler = SchedulerSettings(
         enabled=bool(raw["scheduler"]["enabled"])
     )
-    gesture = GestureSettings(
-        enabled=bool(raw["gesture"]["enabled"]),
-        approach_cm=float(raw["gesture"]["approach_cm"]),
-        leave_cm=float(raw["gesture"]["leave_cm"]),
-        leave_hold_s=float(raw["gesture"]["leave_hold_s"]),
-        cooldown_s=float(raw["gesture"]["cooldown_s"]),
-        debounce_frames=int(raw["gesture"]["debounce_frames"]),
-        min_votes=int(raw["gesture"]["min_votes"]),
-        poll_ms=int(raw["gesture"]["poll_ms"]),
-    )
     voice = SpeechSettings(
         enabled=bool(raw["voice"]["enabled"]),
         sample_rate=int(raw["voice"]["sample_rate"]),
@@ -304,7 +275,6 @@ def load_settings(
         data=data,
         hal=hal,
         scheduler=scheduler,
-        gesture=gesture,
         voice=voice,
         logging=logging_settings,
         ui=ui,

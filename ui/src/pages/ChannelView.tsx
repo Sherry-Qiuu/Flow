@@ -5,6 +5,8 @@ import {
 } from "../state/reducer";
 import type { FlowState } from "../state/types";
 import { PageShell } from "../components/PageShell";
+import { TouchButton } from "../components/TouchButton";
+import { endPhoneSession, sendIntent } from "../app/touch";
 
 interface Props {
   state: FlowState;
@@ -23,6 +25,20 @@ export function ChannelView({ state }: Props) {
         {hints.length > 1 && (
           <p className="channel-hint">{hints[1]}</p>
         )}
+        <div className="touch-actions">
+          {state.channel === "phone" ? (
+            <TouchButton
+              label="已放回手机"
+              variant="primary"
+              onClick={endPhoneSession}
+            />
+          ) : (
+            <TouchButton
+              label="返回"
+              onClick={() => sendIntent("返回")}
+            />
+          )}
+        </div>
       </div>
     </PageShell>
   );
@@ -47,6 +63,16 @@ function ChannelBody({ state }: Props) {
         <div className="channel-focus">
           <strong>{clock(data.remaining_seconds)}</strong>
           <span>{data.running === true ? "正在专注" : "已暂停"}</span>
+        </div>
+      );
+    case "phone":
+      return (
+        <div className="channel-focus">
+          <strong>{clock(data.remaining_seconds)}</strong>
+          <span>
+            {text(data.purpose, "手机使用")} ·
+            {data.status === "overdue" ? " 该归位了" : " 使用中"}
+          </span>
         </div>
       );
     case "reminder":

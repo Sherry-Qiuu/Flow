@@ -192,6 +192,27 @@ describe("flow reducer", () => {
     expect(state.channelData.running).toBe(true);
   });
 
+  it("maps reward feedback and companion state", () => {
+    let state = withMessage(makeInitialState(at), "reward.feedback", {
+      message: "这一小步，稳稳的。",
+      level: 1,
+    });
+    expect(state.phase).toBe("celebrating");
+    expect(state.message).toContain("这一小步");
+    state = withMessage(state, "state.sync", {
+      phase: "idle",
+      companion: {
+        exp: 12,
+        level: 1,
+        stage: "小苗",
+        streak: 3,
+        next_exp: 30,
+      },
+    });
+    expect(state.companion?.stage).toBe("小苗");
+    expect(state.companion?.streak).toBe(3);
+  });
+
   it("ignores stale sequenced events but accepts a fresh sync", () => {
     const first = withMessage(
       makeInitialState(at),
