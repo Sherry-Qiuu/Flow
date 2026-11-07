@@ -51,6 +51,32 @@ DEFAULT_CACHE_TTL_S = 24 * 60 * 60
 _TRUTHY = {"1", "true", "yes", "on"}
 _FALSY = {"0", "false", "no", "off"}
 
+# The validator's whitelist is deliberately narrow (it also scores the rule
+# engine's own templates). Model output is livelier, so the LLM path matches
+# against a wider prefix set and strips common leading adverbs first.
+_EXTRA_VERB_PREFIXES = (
+    "找出", "算出", "翻到", "翻到", "补写", "浏览", "列出", "查到",
+    "标出", "记下", "抄下", "摘录", "朗读", "试做", "试着", "勾选",
+    "核对", "梳理", "背诵", "概括", "提炼", "归纳", "修订", "校对",
+)
+_ADVERB_PREFIXES = (
+    "快速", "仔细", "认真", "简单", "先", "再", "接着", "然后",
+    "首先", "其次", "尝试", "尝试着", "试着",
+)
+
+
+def _verb_first_lenient(title: str) -> bool:
+    """Accept lively model titles; still reject preposition-opened ones."""
+    text = (title or "").strip()
+    for adverb in _ADVERB_PREFIXES:
+        if text.startswith(adverb):
+            text = text[len(adverb):].lstrip("，,、 ")
+    if not text:
+        return False
+    if is_verb_first(text):
+        return True
+    return text.startswith(_EXTRA_VERB_PREFIXES)
+
 SYSTEM_PROMPT = (
     "你是「心流 Flow」的拆解助手，服务对象是容易因为任务积压而焦虑的学生。"
     "你只做一件事：把一件任务拆成可以立刻动手的小步骤。"
@@ -665,7 +691,7 @@ def _normalise_steps(
         title = str(raw.get("title") or raw.get("name") or "").strip()
         if not title:
             continue
-        if not is_verb_first(title):
+        if not _verb_first_lenient(title):
             # One weak title must not sink the whole decomposition; drop the
             # step and keep the rest if there are still enough of them.
             logger.warning(
