@@ -16,6 +16,46 @@ from channel.router import route
 
 logger = logging.getLogger(__name__)
 
+# Gestures that the controller is allowed to turn into intents. ``ui.action``
+# carries the same vocabulary over the websocket.
+GESTURE_ACTIONS = frozenset(
+    {
+        "confirm",
+        "next",
+        "prev",
+        "extend",
+        "shorten",
+        "finish_step",
+        "skip_step",
+        "channel_next",
+        "channel_prev",
+    }
+)
+
+# Action types that drive the machine itself rather than the screen.
+_CONTROL_ACTIONS = frozenset({"back", "channel.snapshot"})
+
+# ``focus.control`` from the touch UI; these are intent names, not gestures.
+FOCUS_COMMANDS = frozenset({"start", "resume", "pause", "finish", "stop"})
+
+
+def _gesture_mapping() -> dict[str, Intent]:
+    return {
+        "confirm": Intent("start", source="gesture"),
+        "next": Intent("next", source="gesture"),
+        "prev": Intent("back", source="gesture"),
+        "extend": Intent("start", source="gesture"),
+        "shorten": Intent("pause", source="gesture"),
+        "finish_step": Intent("finish", source="gesture"),
+        "skip_step": Intent("next", source="gesture"),
+        "channel_next": Intent(
+            "open_tool",
+            tool="tasks",
+            source="gesture",
+        ),
+        "channel_prev": Intent("back", source="gesture"),
+    }
+
 
 class ChannelHealth:
     def __init__(self, state: str, detail: str = "") -> None:
@@ -94,25 +134,26 @@ class ChannelService:
 
     def handle_gesture(self, payload: dict[str, Any]) -> list[Action]:
         action = str(payload.get("action", ""))
-        mapping = {
-            "confirm": Intent("start", source="gesture"),
-            "next": Intent("next", source="gesture"),
-            "prev": Intent("back", source="gesture"),
-            "extend": Intent("start", source="gesture"),
-            "shorten": Intent("pause", source="gesture"),
-            "finish_step": Intent("finish", source="gesture"),
-            "skip_step": Intent("next", source="gesture"),
-            "channel_next": Intent(
-                "open_tool",
-                tool="tasks",
-                source="gesture",
-            ),
-            "channel_prev": Intent("back", source="gesture"),
-        }
-        intent = mapping.get(action)
+        intent = _gesture_mapping().get(action)
         if intent is None:
             return []
         actions = self.machine.handle_intent(intent)
+        self._publish_actions(actions)
+        return actions
+
+    def handle_command(
+        self,
+        name: str,
+        *,
+        source: str = "client",
+    ) -> list[Action]:
+        """Run an intent by name, used by touch controls such as focus."""
+        command = str(name).strip().lower()
+        if command not in FOCUS_COMMANDS:
+            return []
+        actions = self.machine.handle_intent(
+            Intent(command, source=source)
+        )
         self._publish_actions(actions)
         return actions
 
@@ -166,6 +207,13 @@ class ChannelService:
     def _publish_actions(self, actions: list[Action]) -> None:
         for action in actions:
             if action.type == "speak":
+                # The screen owns all copy; without this the robot reasons
+                # correctly and never says anything.
+                text = str(action.payload.get("text", "")).strip()
+                if text:
+                    self._publish(topics.ASSISTANT_SAY, {"text": text})
+                continue
+            if action.type in _CONTROL_ACTIONS:
                 continue
             self._publish(action.type, action.payload)
 
