@@ -62,7 +62,13 @@ function ChannelBody({ state }: Props) {
       return (
         <div className="channel-focus">
           <strong>{clock(data.remaining_seconds)}</strong>
-          <span>{data.running === true ? "正在专注" : "已暂停"}</span>
+          <span>
+            {data.status === "running"
+              ? "正在专注"
+              : data.status === "paused"
+                ? "已暂停"
+                : "准备开始"}
+          </span>
         </div>
       );
     case "phone":

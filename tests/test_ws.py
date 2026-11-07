@@ -24,11 +24,12 @@ from service.protocol import ServerMessage
 
 
 def make_client(root: Path):
+    identifier = uuid.uuid4().hex
     settings = Settings(
         app=AppSettings(version="test-version"),
         data=DataSettings(
-            dir=root,
-            db_path=root / f"ws-{uuid.uuid4().hex}.db",
+            dir=root / f"ws-{identifier}",
+            db_path=root / f"ws-{identifier}.db",
         ),
         hal=HalSettings(backend="mock"),
         scheduler=SchedulerSettings(enabled=False),

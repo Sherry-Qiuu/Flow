@@ -26,7 +26,9 @@ def make_settings(root: Path) -> Settings:
     return Settings(
         app=AppSettings(version="test-version"),
         data=DataSettings(
-            dir=root,
+            # The focus store lives under data.dir; a shared dir would leak a
+            # running session from one test into the next.
+            dir=root / f"api-{identifier}",
             db_path=root / f"api-{identifier}.db",
         ),
         hal=HalSettings(backend="mock"),

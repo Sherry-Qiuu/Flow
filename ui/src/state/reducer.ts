@@ -350,26 +350,30 @@ function applyFocus(
   state: FlowState,
   payload: Record<string, unknown>,
 ): FlowState {
-  const step = stepFrom(payload) ?? state.step;
+  const status = text(payload.status, undefined);
+  const running = bool(payload.running, status === "running");
+  // Paused still belongs to the session; idle does not. Forcing "executing"
+  // for every focus.state frame hijacked the screen when nothing was running,
+  // and a finished timer must hand the screen back to the home page.
+  const focusing = running || status === "paused";
+  const ended = !focusing && (status === "idle" || status === "done");
   const remaining = integer(payload.remaining_seconds, undefined);
-  const focusChannel =
-    state.channelActive &&
-    state.channel === "focus" &&
-    remaining !== undefined;
+  const inFocusChannel = state.channelActive && state.channel === "focus";
   return {
     ...state,
-    phase: "executing",
-    channelActive: false,
-    face: "neutral",
-    step,
-    channelData: focusChannel
-      ? {
-          ...state.channelData,
-          remaining_seconds: remaining,
-          running: bool(payload.running, false),
-        }
-      : state.channelData,
-    message: text(payload.message, "只做眼前这一步。"),
+    phase: ended ? "idle" : focusing ? "executing" : state.phase,
+    channelActive: focusing ? false : state.channelActive,
+    face: ended ? PHASE_FACE.idle : focusing ? "neutral" : state.face,
+    step: ended ? null : (stepFrom(payload) ?? state.step),
+    channelData:
+      inFocusChannel && remaining !== undefined
+        ? { ...state.channelData, remaining_seconds: remaining, running }
+        : state.channelData,
+    message: ended
+      ? PHASE_MESSAGE.idle
+      : focusing
+        ? text(payload.message, "只做眼前这一步。")
+        : state.message,
   };
 }
 

@@ -118,6 +118,8 @@ describe("flow reducer", () => {
       total_ms: 900000,
       index: 2,
       total: 4,
+      status: "running",
+      running: true,
     });
     expect(state.phase).toBe("executing");
     expect(state.step.title).toBe("写出引言");
@@ -190,6 +192,29 @@ describe("flow reducer", () => {
     });
     expect(state.channelData.remaining_seconds).toBe(540);
     expect(state.channelData.running).toBe(true);
+  });
+
+  it("returns to the home page when the timer ends", () => {
+    let state = withMessage(makeInitialState(at), "focus.state", {
+      title: "写引言",
+      remaining_ms: 60000,
+      total_ms: 60000,
+      status: "running",
+      running: true,
+    });
+    expect(state.phase).toBe("executing");
+    expect(state.step?.title).toBe("写引言");
+
+    state = withMessage(state, "focus.state", {
+      task_id: null,
+      title: "",
+      remaining_ms: 0,
+      total_ms: 0,
+      status: "idle",
+      running: false,
+    });
+    expect(state.phase).toBe("idle");
+    expect(state.step).toBeNull();
   });
 
   it("maps reward feedback and companion state", () => {

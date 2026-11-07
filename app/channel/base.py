@@ -50,6 +50,9 @@ class ChannelContext:
     now: Callable[[], datetime] = lambda: datetime.now(DISPLAY_TZ)
     publish: Callable[[str, dict[str, Any]], None] | None = None
     settings: dict[str, Any] = field(default_factory=dict)
+    # The focus channel delegates timing to FocusService so the kiosk gets
+    # one ``focus.state`` stream instead of two competing ones.
+    focus: Any = None
 
 
 class Channel(ABC):

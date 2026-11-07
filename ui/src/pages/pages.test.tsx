@@ -56,7 +56,7 @@ describe("T05 pages", () => {
     const html = renderToStaticMarkup(<Idle state={state()} />);
     expect(html).toContain("任务");
     expect(html).toContain("专注 15 分钟");
-    expect(html).toContain("计划");
+    expect(html).toContain("安排今天");
     expect(html).toMatch(/<button/);
   });
 
@@ -141,6 +141,7 @@ describe("T05 pages", () => {
           channelTitle: "专注计时",
           channelData: {
             remaining_seconds: 300,
+            status: "running",
             running: true,
           },
           channelHints: ["说“暂停”", "说“返回”"],

@@ -128,6 +128,8 @@ class ChannelMachine:
 
     def handle_intent(self, intent: Intent) -> list[Action]:
         with self._lock:
+            if intent.name == "make_plan":
+                return [Action(topics.PLAN_REQUESTED, {"text": intent.text})]
             if intent.name == "open_tool":
                 if not intent.tool or not self.registry.has(intent.tool):
                     return [
@@ -160,6 +162,15 @@ class ChannelMachine:
                         {"text": "我还没听懂，可以说“打开任务清单”"},
                     )
                 ]
+            if (
+                intent.name in {"start", "resume"}
+                and intent.args.get("open_focus")
+                and (self._current is None or self._current.key != "focus")
+                and self.registry.has("focus")
+            ):
+                # "开始专注" from the home screen: open the channel and
+                # start in one step instead of asking again.
+                self.activate("focus", {"minutes": intent.args.get("minutes")})
             if self._current is None:
                 return [
                     Action(

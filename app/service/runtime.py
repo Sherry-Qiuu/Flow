@@ -6,10 +6,10 @@ import asyncio
 import inspect
 import logging
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from bus import topics
 from bus.event_bus import EventBus
 from analytics.collector import AnalyticsService
 from analytics.distraction import DistractionService
@@ -35,6 +35,7 @@ from phone.inbox import FileInbox
 from phone.service import PhoneSessionService
 from phone.usage import UsageService
 from plan.service import PlanService
+from planner.timeutil import tz_for
 from recovery import RecoveryReport
 from users.service import UserService
 from service.config import Settings
@@ -51,12 +52,6 @@ from voice.say import SayService, SaySettings
 from voice.tts import EspeakTts
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class RuntimeState:
-    phase: str = "idle"
-    channel: str = "clock"
 
 
 class Runtime:
@@ -99,7 +94,8 @@ class Runtime:
         self.degrade = DegradeMatrix(self.hal)
         self.recovery = RecoveryReport(settings.data.dir)
         self.hub = WebSocketHub(self.bus, self.snapshot)
-        self.state = RuntimeState()
+        self._tz = tz_for(settings.app.timezone)
+        self._plan_unsubscribe: Callable[[], None] | None = None
         self.started_at: datetime | None = None
         self._started_monotonic = 0.0
         self._subsystems: dict[str, ServiceStatus] = {}
@@ -193,6 +189,7 @@ class Runtime:
             publisher=self.bus,
             say=self.say_service,
             store_path=self.settings.data.dir / "focus_state.json",
+            now_fn=lambda: datetime.now(self._tz),
         )
         self.phone_contract = PhoneContractService(
             self.repos.phone_sessions,
@@ -206,6 +203,8 @@ class Runtime:
             ChannelContext(
                 user_id=DEFAULT_USER_ID,
                 repos=self.repos,
+                now=lambda: datetime.now(self._tz),
+                focus=self.focus,
             ),
             publisher=self.bus,
         )
@@ -215,6 +214,10 @@ class Runtime:
             subscriber=self.bus,
         )
         await self._start("channel", self.channels.start)
+        self._plan_unsubscribe = self.bus.subscribe(
+            topics.PLAN_REQUESTED,
+            self._on_plan_requested,
+        )
         await self._start("celebrate", self.celebrate.start)
         await self._start("focus", self.focus.start)
         self.load.start()
@@ -246,6 +249,9 @@ class Runtime:
             extra={"event": "service.stopping"},
         )
         await self.hub.stop()
+        if self._plan_unsubscribe is not None:
+            self._plan_unsubscribe()
+            self._plan_unsubscribe = None
         self.scheduler.stop()
         if self.voice is not None:
             self.voice.stop()
@@ -309,6 +315,15 @@ class Runtime:
                     "topic": status.state,
                 },
             )
+
+    def _on_plan_requested(self, payload: dict[str, Any]) -> None:
+        """Build a plan from the task list when the screen asks for one."""
+        if self.plan_service is None or self.repos is None:
+            return
+        try:
+            self.plan_service.create_from_repo()
+        except Exception:
+            logger.exception("plan request failed")
 
     def _register_client_handlers(self) -> None:
         """Give the three declared client message types a real receiver."""
@@ -465,7 +480,12 @@ class Runtime:
             channel_state = self.phone_contract.active.snapshot(
                 self.phone_contract.now_fn()
             )
-        phase = _phase_for(channel_state)
+        focus_state = (
+            self.focus.snapshot() if self.focus is not None else None
+        )
+        focus_plan = self._plan_for_focus()
+        draft_plan = self._open_draft_plan()
+        phase = _phase_for(channel_state, focus_state, draft_plan is not None)
         return {
             "version": self.settings.app.version,
             "started_at": self._started_at_iso(),
@@ -474,7 +494,7 @@ class Runtime:
             "phase": phase,
             "channel": _channel_key(channel_state),
             "channel_state": channel_state,
-            "message": _message_for(channel_state),
+            "message": _message_for(channel_state, phase),
             "tasks_count": self._open_task_count(),
             "subsystems": {
                 name: status.to_dict()
@@ -520,25 +540,13 @@ class Runtime:
             "degrade": self.degrade.snapshot(),
             "recovery": self.recovery.snapshot(),
             "step": (
-                self.focus.snapshot()
-                if self.focus is not None
-                and self.focus.state.status != "idle"
+                focus_state
+                if focus_state is not None
+                and focus_state.get("status") != "idle"
                 else None
             ),
-            "focus": (
-                self.focus.snapshot()
-                if self.focus is not None
-                else None
-            ),
-            "plan": (
-                self.repos.plans.get(self.focus.state.plan_id).to_dict()
-                if self.repos is not None
-                and self.focus is not None
-                and self.focus.state.plan_id
-                and self.repos.plans.get(self.focus.state.plan_id)
-                is not None
-                else None
-            ),
+            "focus": focus_state,
+            "plan": focus_plan or draft_plan,
             "capture": {
                 "camera": bool(
                     self.hal.hal is not None
@@ -552,6 +560,36 @@ class Runtime:
         if self.channels is None:
             return None
         return self.channels.snapshot()["current"]
+
+    def _plan_for_focus(self) -> dict[str, Any] | None:
+        if self.repos is None or self.focus is None:
+            return None
+        plan_id = self.focus.state.plan_id
+        if not plan_id:
+            return None
+        plan = self.repos.plans.get(plan_id)
+        return plan.to_dict() if plan is not None else None
+
+    def _open_draft_plan(self) -> dict[str, Any] | None:
+        """A draft still waiting for confirmation becomes the review page.
+
+        Only today's draft counts: yesterday's abandoned plan must not hijack
+        the screen every time the kiosk reconnects.
+        """
+        if self.repos is None:
+            return None
+        today = datetime.now(self._tz).date().isoformat()
+        try:
+            for row in self.repos.plans.list():
+                if row["status"] != "draft":
+                    continue
+                if str(row["plan_date"]) != today:
+                    continue
+                plan = self.repos.plans.get(str(row["id"]))
+                return plan.to_dict() if plan is not None else None
+        except Exception:  # pragma: no cover - database boundary
+            logger.exception("could not look up the draft plan")
+        return None
 
     def _open_task_count(self) -> int:
         if self.repos is None:
@@ -642,8 +680,23 @@ def _channel_key(current: dict[str, Any] | None) -> str:
     return str(key) if key else "clock"
 
 
-def _phase_for(current: dict[str, Any] | None) -> str:
-    """Derive the screen phase from what is actually running."""
+def _phase_for(
+    current: dict[str, Any] | None,
+    focus_state: dict[str, Any] | None = None,
+    has_draft_plan: bool = False,
+) -> str:
+    """Derive the screen phase from what is actually running.
+
+    The focus timer is owned by FocusService, not by the channel, so a
+    running session has to win even when the channel stack is empty --
+    otherwise a reconnect during a session shows the idle screen while the
+    clock keeps counting down.
+    """
+    status = (focus_state or {}).get("status")
+    if status in {"running", "paused"}:
+        return "executing"
+    if has_draft_plan:
+        return "plan_review"
     if not current:
         return "idle"
     if current.get("channel") == "focus":
@@ -653,7 +706,14 @@ def _phase_for(current: dict[str, Any] | None) -> str:
     return "idle"
 
 
-def _message_for(current: dict[str, Any] | None) -> str:
+def _message_for(
+    current: dict[str, Any] | None,
+    phase: str = "idle",
+) -> str:
+    if phase == "executing":
+        return "只做眼前这一步。"
+    if phase == "plan_review":
+        return "这份计划可以吗？"
     hints = (current or {}).get("hints")
     if isinstance(hints, list) and hints:
         return str(hints[0])

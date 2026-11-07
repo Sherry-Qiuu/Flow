@@ -17,12 +17,12 @@ PHONE_SESSION_STARTED = "phone.session.started"
 PHONE_SESSION_ENDED = "phone.session.ended"
 PHONE_SESSION_OVERDUE = "phone.session.overdue"
 INTENT_PARSED = "intent.parsed"
-ASSISTANT_SAY = "assistant.say"
 CHANNEL_ENTER = "channel.enter"
 CHANNEL_EXIT = "channel.exit"
 MUSIC_STATE = "music.state"
 TASK_CREATED = "task.created"
 TASK_UPDATED = "task.updated"
+PLAN_REQUESTED = "plan.requested"
 PLAN_DRAFT = "plan.draft"
 PLAN_CONFIRMED = "plan.confirmed"
 FOCUS_STATE = "focus.state"
@@ -47,12 +47,12 @@ ALL_TOPICS = (
     PHONE_SESSION_ENDED,
     PHONE_SESSION_OVERDUE,
     INTENT_PARSED,
-    ASSISTANT_SAY,
     CHANNEL_ENTER,
     CHANNEL_EXIT,
     MUSIC_STATE,
     TASK_CREATED,
     TASK_UPDATED,
+    PLAN_REQUESTED,
     PLAN_DRAFT,
     PLAN_CONFIRMED,
     FOCUS_STATE,

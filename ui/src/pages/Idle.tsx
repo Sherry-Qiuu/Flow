@@ -36,11 +36,11 @@ export function Idle({ state }: PageProps) {
         />
         <TouchButton
           label="专注 15 分钟"
-          onClick={() => sendIntent("打开专注计时器 15 分钟")}
+          onClick={() => sendIntent("开始专注 15 分钟")}
         />
         <TouchButton
-          label="计划"
-          onClick={() => sendIntent("打开计划表")}
+          label="安排今天"
+          onClick={() => sendIntent("帮我安排今天")}
         />
       </div>
     </PageShell>

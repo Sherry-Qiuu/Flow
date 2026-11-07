@@ -47,6 +47,7 @@ class FocusState:
             "index": self.index,
             "total": self.total,
             "status": self.status,
+            "running": self.status == "running",
             "stuck_count": self.stuck_count,
             "remaining_seconds": max(0, self.remaining_s),
         }
@@ -95,6 +96,7 @@ class FocusService:
         self._thread: threading.Thread | None = None
         self._last_tick = clock()
         self._last_persist = clock()
+        self._accumulated_s = 0.0
 
     def start(self) -> "FocusHealth":
         recovered = self.store.load()
@@ -160,7 +162,7 @@ class FocusService:
             total_s=max(60, int(current["est_minutes"]) * 60),
             remaining_s=max(60, int(current["est_minutes"]) * 60),
             status="running",
-            saved_at=self.now_fn().astimezone(TZ).isoformat(),
+            saved_at=self._now_iso(),
         )
         self.repos.plan_items.update_status(self.state.item_id, "running")
         self.state.session_id = self.repos.focus_sessions.start(
@@ -169,6 +171,35 @@ class FocusService:
         self._publish_state()
         self._persist()
         self._say(f"先做这一步：{self.state.title}")
+        return {"ok": True, "state": self.state.snapshot()}
+
+    def begin_timer(self, minutes: int = 25) -> dict[str, Any]:
+        """Start a planless timer; the focus channel delegates here.
+
+        One timer, one publisher: the channel used to keep its own counter
+        and publish the same ``focus.state`` topic with a different shape,
+        so the screen flickered between a real plan step and a fake one.
+        """
+        if self.state.status in {"running", "paused"}:
+            return {
+                "ok": True,
+                "reused": True,
+                "state": self.state.snapshot(),
+            }
+        total = max(60, min(180, int(minutes or 25)) * 60)
+        self.state = FocusState(
+            title="专注",
+            detail="只做眼前这一步",
+            index=0,
+            total=1,
+            total_s=total,
+            remaining_s=total,
+            status="running",
+            saved_at=self._now_iso(),
+        )
+        self.state.session_id = self.repos.focus_sessions.start()
+        self._publish_state()
+        self._persist()
         return {"ok": True, "state": self.state.snapshot()}
 
     def control(
@@ -237,13 +268,15 @@ class FocusService:
         return {"ok": True, "plan": plan.to_dict()}
 
     def _advance(self, status: str) -> dict[str, Any]:
-        self.repos.plan_items.update_status(self.state.item_id, status)
+        if self.state.plan_id:
+            self.repos.plan_items.update_status(self.state.item_id, status)
         if self.state.session_id is not None:
             self.repos.focus_sessions.finish(self.state.session_id)
-        self._publish(
-            "plan.item.advanced",
-            {"from_id": self.state.item_id, "status": status},
-        )
+        if self.state.plan_id:
+            self._publish(
+                "plan.item.advanced",
+                {"from_id": self.state.item_id, "status": status},
+            )
         self._publish(
             topics.REWARD_EVENT,
             {
@@ -251,6 +284,16 @@ class FocusService:
                 "title": self.state.title,
             },
         )
+        if not self.state.plan_id:
+            # Planless timer: no item to advance, just close the session.
+            self.state = FocusState(status="idle")
+            self._publish_state()
+            self._persist()
+            return {
+                "ok": True,
+                "done": True,
+                "state": self.state.snapshot(),
+            }
         rows = self.repos.plan_items.list(self.state.plan_id)
         pending = [
             (index, row)
@@ -298,22 +341,48 @@ class FocusService:
             delta = max(0.0, now - self._last_tick)
             self._last_tick = now
             if self.state.status != "running":
+                self._accumulated_s = 0.0
                 continue
-            self.state.remaining_s = max(
-                0, self.state.remaining_s - int(delta)
-            )
+            # Keep the fraction: int(delta) alone stalls the clock whenever
+            # the loop wakes up a few milliseconds early.
+            self._accumulated_s += delta
+            whole = int(self._accumulated_s)
+            if whole:
+                self._accumulated_s -= whole
+                self.state.remaining_s = max(
+                    0, self.state.remaining_s - whole
+                )
             if self.state.remaining_s == 0 and not self.state.overrun_notified:
                 self.state.overrun_notified = True
-                self._publish(
-                    "focus.overdue",
-                    {"title": self.state.title, "plan_id": self.state.plan_id},
-                )
-                self._say(
-                    "这一步超出预估了，要延长、跳过还是换个简单的？"
-                )
+                if self.state.plan_id:
+                    self._publish(
+                        "focus.overdue",
+                        {
+                            "title": self.state.title,
+                            "plan_id": self.state.plan_id,
+                        },
+                    )
+                    self._say(
+                        "这一步超出预估了，要延长、跳过还是换个简单的？"
+                    )
+                else:
+                    self._finish_timer()
+                    continue
             self._publish_state()
             if now - self._last_persist > 5:
                 self._persist()
+
+    def _finish_timer(self) -> None:
+        """Close a planless timer at zero without nagging about a step."""
+        if self.state.session_id is not None:
+            self.repos.focus_sessions.finish(self.state.session_id)
+        self._publish(
+            topics.REWARD_EVENT,
+            {"kind": "timer_done", "title": self.state.title},
+        )
+        self.state = FocusState(status="idle")
+        self._publish_state()
+        self._persist()
 
     def _say(self, text: str) -> None:
         if self.say is None:
@@ -330,8 +399,12 @@ class FocusService:
     def _publish_state(self) -> None:
         self._publish(topics.FOCUS_STATE, self.state.snapshot())
 
+    def _now_iso(self) -> str:
+        """Timestamps follow the configured display zone, not a constant."""
+        return self.now_fn().isoformat()
+
     def _persist(self) -> None:
-        self.state.saved_at = self.now_fn().astimezone(TZ).isoformat()
+        self.state.saved_at = self._now_iso()
         try:
             self.store.save(self.state)
         except Exception:
