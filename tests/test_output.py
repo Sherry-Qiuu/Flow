@@ -64,7 +64,7 @@ class FakeTts(TtsProvider):
         return self.path
 
 
-def test_say_events_dedupe_and_quiet():
+def test_say_events_dedupe_and_quiet(workspace_tmp):
     bus = LocalEventBus()
     said: list[dict] = []
     faces: list[dict] = []
@@ -75,7 +75,7 @@ def test_say_events_dedupe_and_quiet():
         audio_out=None,
         publisher=bus,
         settings=SaySettings(
-            cache_dir=str(Path(".test_tmp") / f"say-{uuid.uuid4().hex}")
+            cache_dir=str(workspace_tmp / f"say-{uuid.uuid4().hex}")
         ),
     )
     service.start()
@@ -113,10 +113,10 @@ def test_tts_cache_and_player(workspace_tmp):
         service.stop()
 
 
-def test_silent_tts_and_audio_cache_key():
-    cache = AudioCache(".test_tmp/cache-test", max_files=2)
+def test_silent_tts_and_audio_cache_key(workspace_tmp):
+    cache = AudioCache(workspace_tmp / "cache-test", max_files=2)
     assert cache.get("missing") is None
-    source = Path(".test_tmp") / f"cache-src-{uuid.uuid4().hex}.wav"
+    source = workspace_tmp / f"cache-src-{uuid.uuid4().hex}.wav"
     source.write_bytes(b"RIFF" + b"\0" * 100)
     target = cache.put("hello", source)
     assert target.exists()
