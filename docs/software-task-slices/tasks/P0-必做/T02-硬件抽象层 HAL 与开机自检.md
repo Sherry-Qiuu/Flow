@@ -11,6 +11,8 @@
 | 前置依赖 | `T01` |
 | 需协同 | `T04`、`T09`、`T20` |
 | 建议角色 | 嵌入式 |
+| 当前状态 | ✅ 已完成（mock 优先）：契约 / mock / real / selftest / 落库 |
+| 子任务数 | 5 项（见第 5 节） |
 
 ## 1. 目标
 
@@ -47,7 +49,21 @@
 - [ ] 开机自检：屏幕点亮、摄像头取帧、录音 1 秒、播放提示音、读传感器，结果写 device_status 表
 - [ ] 自检失败在 UI 顶部显示故障图标，但服务继续运行（降级而非崩溃）
 
-## 5. 接口契约
+## 5. 子任务拆解
+
+每项 ≤0.5 人日，可单独勾选验收。做完一项就在 `产物` 那一列把文件建出来。
+
+| 子任务 | 名称 | 产物 | 完成判据 | 人日 |
+|---|---|---|---|---|
+| `T02.1` | 设备契约与状态模型 | `app/hal/contracts.py` | 六类设备 ABC、DeviceStatus(ok/missing/error)、EventPublisher 协议 | 0.5 |
+| `T02.2` | mock 实现 | `app/hal/mock/*` | 无外设电脑上六个设备全部可用，摄像头返回真实 JPEG | 0.5 |
+| `T02.3` | real 适配 | `app/hal/real/*` | picamera2/OpenCV、sounddevice、gpiozero、INA219 各自 probe 成功 | 0.5 |
+| `T02.4` | 开机自检 CLI | `app/hal/selftest.py` | python -m hal.selftest 逐项 OK/FAIL/SKIP，失败不中断 | 0.25 |
+| `T02.5` | 状态落库与故障上报 | `app/hal/status_store.py` | 写 device_status；Hal.faulted_devices() 供 UI 显示故障图标 | 0.25 |
+
+**小计 2.00 人日**
+
+## 6. 接口契约
 
 ```
 from typing import Protocol
@@ -73,22 +89,39 @@ class AudioOut(Protocol):
     def set_volume(self, v: float) -> None: ...
 ```
 
-## 6. 验收标准（Definition of Done）
+## 7. 实现要点
+
+```
+已落地，新增设备时照这个套路：
+
+app/hal/contracts.py   设备 ABC（probe/open/close/health）
+app/hal/mock/          假实现，返回真实格式数据（JPEG、PCM）
+app/hal/real/          真驱动，失败一律返回 DeviceStatus 而不是抛异常
+app/hal/factory.py     create_hal()，FLOW_HAL=mock|real|auto
+app/hal/selftest.py    python -m hal.selftest
+
+上层只允许这样调用：
+    status = hal.camera.probe()
+    jpeg   = hal.camera.capture()      # 不可用时返回 None
+    hal.phone_stand.state().present    # 永远有快照，不抛异常
+```
+
+## 8. 验收标准（Definition of Done）
 
 - [ ] python -m hal.selftest 逐项输出每个设备的 OK / FAIL 及原因
 - [ ] FLOW_HAL=mock 模式下，语音、拍照、传感器等上层功能在无外设电脑上全部可跑通
 - [ ] 运行中拔掉摄像头，服务不崩溃，UI 显示降级图标
 - [ ] 传感器状态变化通过事件总线 phone.changed 在 300ms 内发出
 
-## 7. 风险与降级
+## 9. 风险与降级
 
 - GPIO 库版本冲突（RPi.GPIO / lgpio / gpiozero）→ 统一用 gpiozero + lgpio 后端
 - USB 麦克风与扬声器采样率不一致 → 在 HAL 内部统一重采样到 16kHz
 
-## 8. 提示
+## 10. 提示
 
 > 先写 mock，再写真实实现：整个团队可以提前两周并行开工。
 
 ---
 
-← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [索引](../../00-README.md)
+← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [细化总表](../../05-任务细化总表.md) ・ [索引](../../00-README.md)

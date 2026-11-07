@@ -11,6 +11,8 @@
 | 前置依赖 | `T10` |
 | 需协同 | `T11`、`T13`、`T14`、`T27` |
 | 建议角色 | AI / 后端 |
+| 当前状态 | 🟡 规则引擎已完成（含校验器）；LLM 主路径未做 |
+| 子任务数 | 6 项（见第 5 节） |
 
 ## 1. 目标
 
@@ -48,7 +50,22 @@
 - [ ] 可解释：每处调整给一句话理由（“因为周三有实验，把预习放到周二晚”）
 - [ ] 成本控制：同一任务文本 24 小时内复用结果；批量任务一次调用完成拆解
 
-## 5. 接口契约
+## 5. 子任务拆解
+
+每项 ≤0.5 人日，可单独勾选验收。做完一项就在 `产物` 那一列把文件建出来。
+
+| 子任务 | 名称 | 产物 | 完成判据 | 人日 |
+|---|---|---|---|---|
+| `T12.1` | 模型与时间工具 | `app/planner/models.py, timeutil.py` | Task/SubTask/Prefs/PlanDraft；day_bounds 与 HH:MM 解析往返一致 | 0.25 |
+| `T12.2` | 时长估算 | `app/planner/estimator.py` | 历史中位数优先，无数据走类别规则表；HistoryProvider 可注入 | 0.5 |
+| `T12.3` | 规则拆解 | `app/planner/rules.py, templates.py` | 3–7 步、动词开头、单步 15–45 分钟、首步 ≤20 分钟 | 0.75 |
+| `T12.4` | 排期装箱 | `app/planner/scheduler.py` | EDF + 精力曲线 + 20% 缓冲 + 45–50 分钟休息 + 依赖拓扑序 | 1.0 |
+| `T12.5` | 校验器 | `app/planner/validator.py` | 拦截 overlap/overdue/outside_available/capacity/break/dependency | 0.5 |
+| `T12.6` | LLM 主路径适配器 | `app/planner/llm.py` | 同 decompose/plan 签名；超时或格式错自动回退 RuleEngine；24h 缓存 | 1.0 |
+
+**小计 4.00 人日**
+
+## 6. 接口契约
 
 ```
 def decompose(task: Task, prefs: Prefs) -> list[SubTask]
@@ -66,7 +83,26 @@ PlanDraft = {
 }
 ```
 
-## 6. 验收标准（Definition of Done）
+## 7. 实现要点
+
+```
+已落地（规则引擎）：
+
+    from planner import RuleEngine, Task, Prefs
+    engine = RuleEngine(Prefs())
+    steps  = engine.decompose(Task(id="t1", title="写 3000 字论文"))
+    draft  = engine.plan(date(2026, 11, 8), [Task(...)])
+    assert engine.last_validation.ok
+
+LLM 适配器要做的只是实现同样的两个方法：
+
+    class LlmEngine:
+        def decompose(self, task, prefs) -> list[SubTask]:
+            out = self.client.call(DECOMPOSE_SCHEMA, ...)   # 超时 4s
+            return parse(out) if valid else RuleEngine().decompose(task, prefs)
+```
+
+## 8. 验收标准（Definition of Done）
 
 - [ ] 输入 5 条杂乱任务，输出计划无时间重叠、无超期、总时长不超可用时段
 - [ ] 每一步时长 ≤ 45 分钟且以动词开头（机器校验，抽查 20 条）
@@ -75,16 +111,16 @@ PlanDraft = {
 - [ ] 单次规划 P95 延迟 ≤ 8 秒
 - [ ] 校验器能稳定拦截人为注入的重叠与超期计划
 
-## 7. 风险与降级
+## 9. 风险与降级
 
 - LLM 拆得太细导致步骤爆炸 → 硬性限制 7 步，超出则合并
 - 估算偏乐观导致永远做不完 → 用实际耗时做滚动校准（实际/预估的中位数比值）
 - API 费用 → 缓存 + 小模型做粗拆 + 大模型只做难任务
 
-## 8. 提示
+## 10. 提示
 
 > 评审时最容易被追问的就是“你凭什么说这样拆是对的”。提前准备 3 个典型任务的拆解示例和人工标注对比。
 
 ---
 
-← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [索引](../../00-README.md)
+← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [细化总表](../../05-任务细化总表.md) ・ [索引](../../00-README.md)

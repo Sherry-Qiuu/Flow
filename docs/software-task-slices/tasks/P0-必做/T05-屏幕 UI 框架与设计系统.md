@@ -11,6 +11,8 @@
 | 前置依赖 | `T01` |
 | 需协同 | `T03`、`T04`、`T13`、`T16` |
 | 建议角色 | 前端 |
+| 当前状态 | 未开始 |
+| 子任务数 | 5 项（见第 5 节） |
 
 ## 1. 目标
 
@@ -47,7 +49,21 @@
 - [ ] 无触屏原则：屏幕上不出现只能点的按钮，所有操作必须同时存在语音/手势的等效路径
 - [ ] 性能：动效用 transform/opacity，避免长列表；字体子集化减少首屏
 
-## 5. 接口契约
+## 5. 子任务拆解
+
+每项 ≤0.5 人日，可单独勾选验收。做完一项就在 `产物` 那一列把文件建出来。
+
+| 子任务 | 名称 | 产物 | 完成判据 | 人日 |
+|---|---|---|---|---|
+| `T05.1` | 工程脚手架与设计令牌 | `ui/src/tokens/{colors,typography,motion}.ts` | Vite+React+TS+Tailwind+Motion 跑得起来；720×720 画布变量就位 | 0.5 |
+| `T05.2` | WS 客户端与状态 reducer | `ui/src/ws/client.ts, ui/src/state/reducer.ts` | 自动重连；断线保留最后状态并显示离线角标 | 0.5 |
+| `T05.3` | 七个页面 | `ui/src/pages/*` | Idle/Listening/Thinking/PlanReview/Executing/Celebrate/Resting 随 ui.phase 切换 | 1.5 |
+| `T05.4` | 表情与动效组件 | `ui/src/components/FaceExpression.tsx 等` | 8 种表情状态机；动效用 transform/opacity，60fps | 0.75 |
+| `T05.5` | 分辨率适配与 kiosk 接入 | `ui/vite.config.ts + 构建产物挂到 flow-ui` | 800×480 / 720×720 / 1024×600 三档不溢出；kiosk 全屏无滚动条 | 0.75 |
+
+**小计 4.00 人日**
+
+## 6. 接口契约
 
 ```
 src/
@@ -58,7 +74,25 @@ src/
   ws/            WebSocket 客户端（自动重连、消息分发）
 ```
 
-## 6. 验收标准（Definition of Done）
+## 7. 实现要点
+
+```
+ui/src/
+├── tokens/{colors,typography,motion}.ts   设计令牌
+├── ws/client.ts                           自动重连 + 事件分发
+├── state/reducer.ts                       单一 reducer，消息 → 状态
+├── components/FaceExpression.tsx          8 种表情
+├── components/{StepCard,ProgressRing,OfflineBadge}.tsx
+└── pages/{Idle,Listening,Thinking,PlanReview,Executing,Celebrate,Resting}/
+
+画布 720×720，用 CSS 变量缩放而非重排：
+    :root { --scale: calc(100vw / 720); }
+    .canvas { width:720px; height:720px; transform: scale(var(--scale)); }
+
+硬规则：屏幕上一个可点元素都不能有，全部由语音/手势等效触发。
+```
+
+## 8. 验收标准（Definition of Done）
 
 - [ ] 7 个页面随 ui.phase 事件正确切换，任意顺序切换无白屏、无残留
 - [ ] WebSocket 断开后显示离线角标，恢复后自动重连并重新同步状态
@@ -66,15 +100,15 @@ src/
 - [ ] 中文在目标字号下清晰无截断（含长任务名换行策略）
 - [ ] 执行态屏幕只有一个步骤 + 剩余时间，没有任务列表
 
-## 7. 风险与降级
+## 9. 风险与降级
 
 - 在树莓派上跑 Chromium 动画掉帧 → 关闭硬件加速以外的重特效，用 CSS 动画而非 JS 逐帧
 - 中文长文本溢出 → 组件层统一做行数与字号自适应
 
-## 8. 提示
+## 10. 提示
 
 > 先在笔记本上把界面全部做完再上板。屏幕只是显示设备，开发阶段完全可以用浏览器调试。
 
 ---
 
-← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [索引](../../00-README.md)
+← 返回 [任务总表](../../03-任务切片与排期.md) ・ [优先级队列](../../04-优先级与执行顺序.md) ・ [细化总表](../../05-任务细化总表.md) ・ [索引](../../00-README.md)
