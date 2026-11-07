@@ -115,7 +115,7 @@ scripts/flow-restore     T10 一键恢复命令
 install.sh               T01 一键安装脚本
 config.yaml              默认配置（可被 FLOW_* 覆盖）
 .env.example              密钥模板；真实 .env 被 gitignore
-tests/                   181 个 Python 测试 + ui 27 个前端测试
+tests/                   192 个 Python 测试 + ui 27 个前端测试
 ```
 
 ## 运行
@@ -168,7 +168,11 @@ curl.exe -s -X POST http://127.0.0.1:8000/api/intent `
 - 任意时刻只有一个 active；切换先 `exit` 再 `enter`
 - 返回栈最多 3 层；`channel.enter` / `channel.exit` 通过 WS 广播
 - 30 分钟内切换达到阈值（默认 12）会在快照 hints 里提示收敛
-- `speech.final` 进入 `ChannelService` 的意图路径。
+- `speech.final` 进入 `ChannelService` 的意图路径
+- 通道返回的 `speak` 动作以 `assistant.say` 广播，屏幕才有话可说；`back` /
+  `channel.snapshot` 是机器内部信号，不再当作总线事件外发
+- `ui.action` / `focus.control` 只接受 start/resume/pause/finish/stop，
+  其他一律回 `invalid_action`；触屏按钮与语音共用同一套动作
 
 ### T10 数据与备份
 
@@ -320,12 +324,15 @@ assert engine.last_validation.ok
 
 ## T03 验收对照
 
-- `curl /healthz` 返回 200，包含版本、启动时间、uptime 及 db/hal/scheduler/phone/voice/websocket 状态。
-- WS 连接后立即收到 `state.sync`（远小于 10 秒）。
-- 非法 JSON / 非法消息结构返回 `error`，连接不关闭。
+- `curl /healthz` 返回 200，包含版本、启动时间、uptime 及 db/hal/scheduler/channel/phone/voice/websocket 状态。
+- WS 连接后立即收到 `state.sync`（远小于 10 秒），其中 `phase` / `channel` / `channel_state` / `message` / `tasks_count`
+  与通道状态机当前状态一致；重连时不会退回占位文案。
+- 三个客户端消息类型都有接收方：`user.intent` 走文本路由，`ui.action` / `focus.control` 走计时控制，非法动作回 `invalid_action`。
+- 非法 JSON / 非法消息结构 / 未声明的消息类型 / 未注册的处理器 / 非法动作都返回带 `code` 的 `error`，连接不关闭。
+- 发送循环失败的连接会从连接表摘除，不会留下"socket 还开着但永远收不到数据"的僵尸连接。
 - `ctrl-c`/systemd `SIGINT` 触发 lifespan 逆序关闭：ws → scheduler → voice → channel → phone → backup → hal → db → bus。
 - JSON lines 日志默认带 `trace_id`；HTTP 请求会回显 `X-Trace-ID`。
-- 单 worker 由 `ensure_single_worker()` 和 systemd `--workers 1` 双重保证。
+- 单 worker 由 `ensure_single_worker()`、`app.single_worker` 配置和 systemd `--workers 1` 三重保证。
 
 ## T04 验收对照
 

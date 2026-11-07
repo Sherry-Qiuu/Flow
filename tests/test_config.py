@@ -96,6 +96,10 @@ def test_public_config_has_no_secret_fields():
         ({"FLOW_HAL": "bad"}, "hal.backend"),
         ({"FLOW_APP__PORT": "70000"}, "port"),
         ({"FLOW_TIMEZONE": "Mars/Olympus"}, "time zone"),
+        # A non-numeric override must name the key, not raise a bare
+        # ValueError with a traceback.
+        ({"FLOW_PORT": "abc"}, "config override app.port: expected an integer"),
+        ({"FLOW_VOICE__SILENCE_MS": "soon"}, "expected an integer"),
     ],
 )
 def test_invalid_configuration_is_rejected(env, message):

@@ -11,10 +11,19 @@ STATE_SYNC = "state.sync"
 UI_PHASE = "ui.phase"
 ASSISTANT_SAY = "assistant.say"
 TASK_CREATED = "task.created"
+TASK_UPDATED = "task.updated"
 PLAN_DRAFT = "plan.draft"
+PLAN_REVISED = "plan.revised"
+PLAN_CONFIRMED = "plan.confirmed"
+FOCUS_STATE = "focus.state"
+CHANNEL_ENTER = "channel.enter"
+CHANNEL_EXIT = "channel.exit"
+MUSIC_STATE = "music.state"
 REMINDER_FIRED = "reminder.fired"
 PHONE_CHANGED = "phone.changed"
 REWARD_EVENT = "reward.event"
+REWARD_FEEDBACK = "reward.feedback"
+EMOTION_FACE = "emotion.face"
 ERROR = "error"
 USER_INTENT = "user.intent"
 UI_ACTION = "ui.action"
@@ -29,10 +38,19 @@ SERVER_MESSAGE_TYPES = frozenset(
         UI_PHASE,
         ASSISTANT_SAY,
         TASK_CREATED,
+        TASK_UPDATED,
         PLAN_DRAFT,
+        PLAN_REVISED,
+        PLAN_CONFIRMED,
+        FOCUS_STATE,
+        CHANNEL_ENTER,
+        CHANNEL_EXIT,
+        MUSIC_STATE,
         REMINDER_FIRED,
         PHONE_CHANGED,
         REWARD_EVENT,
+        REWARD_FEEDBACK,
+        EMOTION_FACE,
         ERROR,
     }
 )
@@ -40,6 +58,9 @@ SERVER_MESSAGE_TYPES = frozenset(
 ERROR_INVALID_JSON = "invalid_json"
 ERROR_INVALID_MESSAGE = "invalid_message"
 ERROR_UNKNOWN_TYPE = "unknown_type"
+ERROR_NO_HANDLER = "no_handler"
+ERROR_NOT_READY = "not_ready"
+ERROR_INVALID_ACTION = "invalid_action"
 ERROR_INTERNAL = "internal_error"
 
 

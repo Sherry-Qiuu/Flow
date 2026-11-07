@@ -190,11 +190,21 @@ class WebSocketHub:
         except asyncio.CancelledError:
             raise
         except Exception:
-            logger.debug(
-                "websocket send loop ended",
-                extra={"client_id": connection.id},
+            # A dead socket left in _connections looks healthy to the client
+            # and swallows every later event. Drop it instead.
+            logger.warning(
+                "websocket send loop ended; dropping connection",
+                extra={
+                    "event": "ws.send_failed",
+                    "client_id": connection.id,
+                },
                 exc_info=True,
             )
+            self._connections.pop(connection.id, None)
+            try:
+                await connection.websocket.close(code=1011)
+            except Exception:  # pragma: no cover - socket boundary
+                pass
 
     async def _broadcast(self, envelope: dict[str, Any]) -> None:
         for connection in tuple(self._connections.values()):
@@ -240,12 +250,19 @@ class WebSocketHub:
             return
         handler = self._handlers.get(message.type)
         if handler is None:
+            # Silence here cost an hour of debugging once already: the client
+            # looks connected and simply never reacts.
+            self._send_error(
+                connection,
+                protocol.ERROR_NO_HANDLER,
+                f"no handler registered for {message.type}",
+            )
             return
         try:
             result = handler(connection, message)
             if inspect.isawaitable(result):
                 await result
-        except Exception as exc:
+        except Exception:
             logger.exception(
                 "client message handler failed",
                 extra={"message_type": message.type},
@@ -253,8 +270,17 @@ class WebSocketHub:
             self._send_error(
                 connection,
                 protocol.ERROR_INTERNAL,
-                f"handler failed: {exc}",
+                "handler failed; see the server log",
             )
+
+    def send_error(
+        self,
+        connection: Connection,
+        code: str,
+        message: str,
+    ) -> None:
+        """Report a rejected client message on an existing connection."""
+        self._send_error(connection, code, message)
 
     def _send_error(
         self,

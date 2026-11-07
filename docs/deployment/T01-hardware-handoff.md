@@ -3,7 +3,7 @@
 > **适用对象**：负责采购、接线、装配、上机测试的同学，以及负责软件联调和最终验收的同学。
 >
 > **关联任务**：[T01 设备镜像与运行基座](../software-task-slices/tasks/P0-必做/T01-设备镜像与运行基座.md)、
-> [T02 硬件抽象层 HAL 与开机自检](../software-task-slices/tasks/P0-必做/T02-硬件抽象层 HAL 与开机自检.md)
+> [T02 硬件抽象层 HAL 与开机自检](<../software-task-slices/tasks/P0-必做/T02-硬件抽象层 HAL 与开机自检.md>)
 >
 > **执行手册**：[T01 硬件落地手册](T01-hardware-runbook.md)（逐条命令、预期输出、排错）。
 >

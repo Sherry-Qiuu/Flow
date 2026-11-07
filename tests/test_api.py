@@ -56,6 +56,7 @@ def test_healthz_returns_version_uptime_and_subsystems(workspace_tmp):
         "db",
         "hal",
         "scheduler",
+        "channel",
         "phone",
         "voice",
         "websocket",
@@ -86,7 +87,9 @@ def test_system_status_contains_runtime_state(workspace_tmp):
     assert response.status_code == 200
     payload = response.json()
     assert payload["phase"] == "idle"
-    assert payload["channel"] == "clock"
+    # Mirrors the channel machine: nothing is active, so the channel is idle.
+    assert payload["channel"] == "idle"
+    assert payload["tasks_count"] == 0
     assert "phone" in payload
     assert "hal" in payload
 
@@ -112,6 +115,21 @@ def test_ensure_single_worker_rejects_multi_worker():
     ensure_single_worker({"WEB_CONCURRENCY": "1"})
     with pytest.raises(RuntimeError, match="single uvicorn worker"):
         ensure_single_worker({"WEB_CONCURRENCY": "2"})
+
+
+def test_single_worker_config_is_enforced_and_not_just_documented(
+    workspace_tmp,
+):
+    """app.single_worker used to be read by nobody."""
+    from dataclasses import replace
+
+    settings = make_settings(workspace_tmp)
+    configured = replace(
+        settings,
+        app=replace(settings.app, single_worker=False),
+    )
+    with pytest.raises(RuntimeError, match="single_worker"):
+        create_app(configured, hal=create_hal("mock"))
 
 
 def test_health_degrades_when_camera_is_missing(workspace_tmp):

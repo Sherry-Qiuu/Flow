@@ -361,7 +361,10 @@ def _set_dotted(raw: dict[str, Any], dotted: str, value: Any) -> None:
             node[part] = child
         node = child
     previous = node.get(parts[-1])
-    node[parts[-1]] = _coerce(value, previous)
+    try:
+        node[parts[-1]] = _coerce(value, previous)
+    except ValueError as exc:
+        raise ValueError(f"config override {dotted}: {exc}") from None
 
 
 def _get_dotted(raw: dict[str, Any], dotted: str) -> Any:
@@ -379,9 +382,15 @@ def _coerce(value: Any, previous: Any) -> Any:
             return value.strip().lower() in {"1", "true", "yes", "on"}
         return bool(value)
     if isinstance(previous, int):
-        return int(value)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"expected an integer, got {value!r}") from None
     if isinstance(previous, float):
-        return float(value)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"expected a number, got {value!r}") from None
     return value
 
 

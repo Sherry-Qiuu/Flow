@@ -16,6 +16,22 @@ from channel.router import route
 
 logger = logging.getLogger(__name__)
 
+# Action types that drive the machine itself rather than the screen.
+_CONTROL_ACTIONS = frozenset({"back", "channel.snapshot"})
+
+# ``focus.control`` / ``ui.action`` from the touch UI; these are intent names.
+FOCUS_COMMANDS = frozenset({"start", "resume", "pause", "finish", "stop"})
+
+# Touch channel shortcuts exposed by ``ui.action``.
+UI_COMMANDS = {
+    "open_tasks": "tasks",
+    "open_plan": "plan",
+    "open_focus": "focus",
+    "open_reminder": "reminder",
+    "open_music": "music",
+    "open_clock": "clock",
+}
+
 
 class ChannelHealth:
     def __init__(self, state: str, detail: str = "") -> None:
@@ -37,13 +53,11 @@ class ChannelService:
         *,
         publisher: Any = None,
         subscriber: Any = None,
-        say: Callable[..., Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.machine = machine
         self.publisher = publisher
         self.subscriber = subscriber
-        self.say = say
         self.clock = clock
         self._unsubscribe: Callable[[], None] | None = None
         self._stop = threading.Event()
@@ -83,6 +97,31 @@ class ChannelService:
         self._last_intent = intent
         self._publish(topics.INTENT_PARSED, intent.to_dict())
         actions = self.machine.handle_intent(intent)
+        self._publish_actions(actions)
+        return actions
+
+    def handle_command(
+        self,
+        name: str,
+        *,
+        source: str = "client",
+    ) -> list[Action]:
+        """Run a focus intent by name, used by touch controls."""
+        command = str(name).strip().lower()
+        if command in UI_COMMANDS:
+            actions = self.machine.handle_intent(
+                Intent(
+                    "open_tool",
+                    tool=UI_COMMANDS[command],
+                    source=source,
+                )
+            )
+        elif command in FOCUS_COMMANDS:
+            actions = self.machine.handle_intent(
+                Intent(command, source=source)
+            )
+        else:
+            return []
         self._publish_actions(actions)
         return actions
 
@@ -130,19 +169,13 @@ class ChannelService:
     def _publish_actions(self, actions: list[Action]) -> None:
         for action in actions:
             if action.type == "speak":
-                if self.say is not None:
-                    try:
-                        self.say(
-                            str(action.payload.get("text", "")),
-                            emotion=str(
-                                action.payload.get("emotion", "neutral")
-                            ),
-                            priority=str(
-                                action.payload.get("priority", "dialogue")
-                            ),
-                        )
-                    except Exception:
-                        logger.exception("channel speech action failed")
+                # The screen owns all copy; without this the robot reasons
+                # correctly and never says anything.
+                text = str(action.payload.get("text", "")).strip()
+                if text:
+                    self._publish(topics.ASSISTANT_SAY, {"text": text})
+                continue
+            if action.type in _CONTROL_ACTIONS:
                 continue
             self._publish(action.type, action.payload)
 

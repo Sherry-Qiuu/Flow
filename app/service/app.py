@@ -47,6 +47,11 @@ def create_app(
 ) -> FastAPI:
     ensure_single_worker()
     resolved = settings or load_settings()
+    if not resolved.app.single_worker:
+        raise RuntimeError(
+            "app.single_worker must stay true; the event bus, channel "
+            "machine and scheduler are in-process"
+        )
     runtime = Runtime(resolved, event_bus, hal)
 
     @asynccontextmanager

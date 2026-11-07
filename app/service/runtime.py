@@ -43,7 +43,8 @@ from service.hal_service import HalService
 from service.logging import configure_logging
 from service.scheduler_service import SchedulerService
 from service.status import ServiceStatus
-from service.ws import WebSocketHub
+from service.ws import Connection, WebSocketHub
+from service import protocol
 from voice.asr import build_asr
 from voice.pipeline import SpeechPipeline
 from voice.say import SayService, SaySettings
@@ -212,7 +213,6 @@ class Runtime:
             self.machine,
             publisher=self.bus,
             subscriber=self.bus,
-            say=self.say_service.say,
         )
         await self._start("channel", self.channels.start)
         await self._start("celebrate", self.celebrate.start)
@@ -231,6 +231,7 @@ class Runtime:
         self.scheduler.say = self.say_service
         await self._start("scheduler", self.scheduler.start)
         await self._start("websocket", self.hub.start)
+        self._register_client_handlers()
         logger.info(
             "service.ready",
             extra={"event": "service.ready"},
@@ -308,6 +309,81 @@ class Runtime:
                     "topic": status.state,
                 },
             )
+
+    def _register_client_handlers(self) -> None:
+        """Give the three declared client message types a real receiver."""
+        self.hub.register_handler(
+            protocol.USER_INTENT,
+            self._on_user_intent,
+        )
+        self.hub.register_handler(
+            protocol.UI_ACTION,
+            self._on_ui_action,
+        )
+        self.hub.register_handler(
+            protocol.FOCUS_CONTROL,
+            self._on_focus_control,
+        )
+
+    def _on_user_intent(
+        self,
+        connection: Connection,
+        message: protocol.ClientMessage,
+    ) -> None:
+        text = str(message.payload.get("text") or "").strip()
+        if not self._channels_ready(connection):
+            return
+        if not text:
+            self.hub.send_error(
+                connection,
+                protocol.ERROR_INVALID_MESSAGE,
+                "intent text must not be empty",
+            )
+            return
+        assert self.channels is not None
+        self.channels.handle_text(text, source="ws")
+
+    def _on_ui_action(
+        self,
+        connection: Connection,
+        message: protocol.ClientMessage,
+    ) -> None:
+        action = str(message.payload.get("action") or "").strip().lower()
+        if not self._channels_ready(connection):
+            return
+        assert self.channels is not None
+        if not self.channels.handle_command(action, source="touch"):
+            self.hub.send_error(
+                connection,
+                protocol.ERROR_INVALID_ACTION,
+                f"unknown action: {action or '(missing)'}",
+            )
+
+    def _on_focus_control(
+        self,
+        connection: Connection,
+        message: protocol.ClientMessage,
+    ) -> None:
+        action = str(message.payload.get("action") or "").strip().lower()
+        if not self._channels_ready(connection):
+            return
+        assert self.channels is not None
+        if not self.channels.handle_command(action, source="touch"):
+            self.hub.send_error(
+                connection,
+                protocol.ERROR_INVALID_ACTION,
+                f"unknown focus command: {action or '(missing)'}",
+            )
+
+    def _channels_ready(self, connection: Connection) -> bool:
+        if self.channels is not None:
+            return True
+        self.hub.send_error(
+            connection,
+            protocol.ERROR_NOT_READY,
+            "channel service is not running",
+        )
+        return False
 
     def health_payload(self) -> dict[str, Any]:
         statuses = self._health_statuses()
@@ -389,14 +465,17 @@ class Runtime:
             channel_state = self.phone_contract.active.snapshot(
                 self.phone_contract.now_fn()
             )
+        phase = _phase_for(channel_state)
         return {
             "version": self.settings.app.version,
             "started_at": self._started_at_iso(),
             "server_time": _utc_now_iso(),
             "uptime_s": self._uptime(),
-            "phase": self.state.phase,
-            "channel": self.state.channel,
+            "phase": phase,
+            "channel": _channel_key(channel_state),
             "channel_state": channel_state,
+            "message": _message_for(channel_state),
+            "tasks_count": self._open_task_count(),
             "subsystems": {
                 name: status.to_dict()
                 for name, status in statuses.items()
@@ -469,6 +548,22 @@ class Runtime:
             "ui": {"size": self.settings.ui.size},
         }
 
+    def _channel_state(self) -> dict[str, Any] | None:
+        if self.channels is None:
+            return None
+        return self.channels.snapshot()["current"]
+
+    def _open_task_count(self) -> int:
+        if self.repos is None:
+            return 0
+        try:
+            return len(
+                [task for task in self.repos.tasks.list() if not task.completed]
+            )
+        except Exception:  # pragma: no cover - database boundary
+            logger.exception("failed to count tasks for the snapshot")
+            return 0
+
     def _health_statuses(self) -> dict[str, ServiceStatus]:
         phone_status = (
             self.phone_sessions.health()
@@ -484,6 +579,18 @@ class Runtime:
             "db": self.db.health(),
             "hal": self.hal.health(),
             "scheduler": self.scheduler.health(),
+            "channel": (
+                ServiceStatus(
+                    "channel",
+                    self.channels.health().state,
+                    self.channels.health().detail,
+                )
+                if self.channels is not None
+                else ServiceStatus.disabled(
+                    "channel",
+                    "channel service not started",
+                )
+            ),
             "phone": (
                 ServiceStatus(
                     "phone",
@@ -526,3 +633,28 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(
         timespec="milliseconds"
     ).replace("+00:00", "Z")
+
+
+def _channel_key(current: dict[str, Any] | None) -> str:
+    if not current:
+        return "clock"
+    key = current.get("channel")
+    return str(key) if key else "clock"
+
+
+def _phase_for(current: dict[str, Any] | None) -> str:
+    """Derive the screen phase from what is actually running."""
+    if not current:
+        return "idle"
+    if current.get("channel") == "focus":
+        data = current.get("data")
+        if isinstance(data, dict) and data.get("running"):
+            return "executing"
+    return "idle"
+
+
+def _message_for(current: dict[str, Any] | None) -> str:
+    hints = (current or {}).get("hints")
+    if isinstance(hints, list) and hints:
+        return str(hints[0])
+    return ""
