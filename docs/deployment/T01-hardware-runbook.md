@@ -9,6 +9,9 @@
 > [D 安全手册](../hardware-tutorials/D-安全手册与红线.md)。
 >
 > 团队分工、物料、测试矩阵和签收表见 [T01 硬件交接说明](T01-hardware-handoff.md)。
+>
+> T05 屏幕 UI / T09 PAJ7620 手势的增量验收见
+> [T05/T09 硬件增量交接说明](T05-T09-hardware-handoff.md)。
 
 ## 0. 先明确：哪些我做、哪些你做
 

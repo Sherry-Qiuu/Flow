@@ -7,6 +7,9 @@
 >
 > **执行手册**：[T01 硬件落地手册](T01-hardware-runbook.md)（逐条命令、预期输出、排错）。
 >
+> **T05/T09 增量**：屏幕 UI、PAJ7620 手势、手机在位/充电的新增硬件验收见
+> [T05/T09 硬件增量交接说明](T05-T09-hardware-handoff.md)。
+>
 > **参考教程**：[H01 开箱](../hardware-tutorials/H01-开箱核对与工具准备.md)、[A 接线总图](../hardware-tutorials/A-接线总图与引脚分配.md)、
 > [B 故障排查](../hardware-tutorials/B-故障排查手册.md)、[D 安全手册](../hardware-tutorials/D-安全手册与红线.md)。
 >

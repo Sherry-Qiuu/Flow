@@ -5,7 +5,7 @@ Design, planning and build documentation for the Flow single-channel task compan
 | Document set | What it covers |
 | --- | --- |
 | [software-task-slices](software-task-slices/00-README.md) | Software requirements (22 items), architecture and tech stack, 30 independently ownable task cards, priority queue |
-| [deployment](deployment/T01-hardware-runbook.md) | T01 Raspberry Pi bring-up: flash, wiring, install, systemd, display, acceptance; [hardware handoff](deployment/T01-hardware-handoff.md) covers scope, BOM, roles, test matrix and sign-off |
+| [deployment](deployment/T01-hardware-runbook.md) | T01 Raspberry Pi bring-up: flash, wiring, install, systemd, display, acceptance; [hardware handoff](deployment/T01-hardware-handoff.md) covers scope, BOM, roles, test matrix and sign-off; [T05/T09 increments](deployment/T05-T09-hardware-handoff.md) cover screen UI and PAJ7620 gesture |
 | [hardware-tutorials](hardware-tutorials/00-总览与学习路径.md) | 10 build tutorials from unboxing to full assembly, plus wiring, troubleshooting, safety and BOM gap appendices |
 
 ## Software task slices

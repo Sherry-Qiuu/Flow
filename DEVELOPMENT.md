@@ -60,7 +60,7 @@ deploy/                  systemd、kiosk、flow-diag、显示配置
 install.sh               T01 一键安装脚本
 config.yaml              默认配置（可被 FLOW_* 覆盖）
 .env.example              密钥模板；真实 .env 被 gitignore
-tests/                   132 个 Python 测试 + ui 18 个前端测试
+tests/                   133 个 Python 测试 + ui 18 个前端测试
 ```
 
 ## 运行
@@ -199,7 +199,8 @@ assert engine.last_validation.ok
   不包含 `.env`。
 - 断电重启 90 秒、中文渲染、离线启动这几项必须在真实树莓派上验收，步骤见
   [硬件手册](docs/deployment/T01-hardware-runbook.md)；团队分工、物料、测试矩阵和
-  签收表见 [硬件交接说明](docs/deployment/T01-hardware-handoff.md)。
+  签收表见 [硬件交接说明](docs/deployment/T01-hardware-handoff.md)；T05 屏幕/T09
+  手势增量见 [T05/T09 硬件增量](docs/deployment/T05-T09-hardware-handoff.md)。
 
 ## T02 验收对照
 

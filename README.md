@@ -117,7 +117,8 @@
 
 实现范围、运行命令与验收对照见 [DEVELOPMENT.md](DEVELOPMENT.md)；
 树莓派上机步骤见 [T01 硬件手册](docs/deployment/T01-hardware-runbook.md)；
-团队分工、物料、测试矩阵和签收表见 [硬件交接说明](docs/deployment/T01-hardware-handoff.md)。
+团队分工、物料、测试矩阵和签收表见 [硬件交接说明](docs/deployment/T01-hardware-handoff.md)；
+T05 屏幕/T09 手势的增量验收见 [T05/T09 硬件增量](docs/deployment/T05-T09-hardware-handoff.md)。
 
 ## 关于
 
