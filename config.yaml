@@ -42,3 +42,13 @@ logging:
 ui:
   url: "http://127.0.0.1:8000"
   size: "720x720"
+
+# T12 LLM main path (拆解)。API key 只从 .env 的 DEEPSEEK_API_KEY 读取，
+# 不要写在这里；没有 key 时自动回退内置规则引擎。
+llm:
+  enabled: true
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-chat"
+  timeout_s: 8.0
+  cache_ttl_s: 86400
+  temperature: 0.2

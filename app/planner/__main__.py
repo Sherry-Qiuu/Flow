@@ -1,14 +1,16 @@
-"""Demo: rule-based decomposition and plan for a messy evening.
+"""Demo: decomposition and a plan for a messy evening.
 
 Run from the ``app`` directory::
 
-    python -m planner
+    python -m planner            # offline rule engine
+    python -m planner --llm      # T12 LLM main path (needs DEEPSEEK_API_KEY)
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import date, datetime, time
 
 from planner import Prefs, RuleEngine, Task, TimeWindow
@@ -27,23 +29,55 @@ SAMPLE_TASKS = (
 )
 
 
+def _build_engine(prefs: Prefs, *, use_llm: bool) -> RuleEngine:
+    """Pick the LLM path when asked for and configured, else the rules."""
+    if not use_llm:
+        return RuleEngine(prefs)
+    from planner.llm import LlmEngine, settings_from_env
+
+    settings = settings_from_env()
+    if not settings.available:
+        print("未找到 DEEPSEEK_API_KEY，回退内置规则引擎", file=sys.stderr)
+        return RuleEngine(prefs)
+    print(f"使用 LLM 主路径：{settings.model}", file=sys.stderr)
+    return LlmEngine(prefs, settings=settings)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Flow rule planner demo")
+    parser = argparse.ArgumentParser(description="Flow planner demo")
     parser.add_argument(
         "--date",
         default="2026-11-08",
         help="plan date (YYYY-MM-DD)",
     )
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--llm",
+        action="store_true",
+        help="use the T12 LLM main path (falls back to rules on failure)",
+    )
+    parser.add_argument(
+        "--title",
+        default="",
+        help="replace the sample essay task with your own title",
+    )
     args = parser.parse_args(argv)
 
     day = date.fromisoformat(args.date)
     prefs = Prefs(
         default_windows=(TimeWindow(time(19, 0), time(22, 0)),),
     )
-    engine = RuleEngine(prefs)
-    essay = engine.decompose(SAMPLE_TASKS[0])
-    draft = engine.plan(day, list(SAMPLE_TASKS))
+    tasks = list(SAMPLE_TASKS)
+    if args.title.strip():
+        tasks[0] = Task(
+            id="t1",
+            title=args.title.strip(),
+            deadline=datetime(2026, 11, 8, 23, 0),
+            priority=1,
+        )
+    engine = _build_engine(prefs, use_llm=args.llm)
+    essay = engine.decompose(tasks[0])
+    draft = engine.plan(day, tasks)
 
     if args.json:
         print(

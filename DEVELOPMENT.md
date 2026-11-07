@@ -38,7 +38,7 @@
 | **T28** 端到端与演示 | 已完成（mock） | 主链路 e2e、flow-reset、分镜/兜底/彩排记录 |
 | **T29** 稳定性与降级 | 已完成（mock/脚本） | 降级矩阵、恢复报告、错误文案、soak 脚本；真实 12h 上机待跑 |
 | **T30** 打包与出厂 | 已完成（脚本/手册） | first-run wizard、upgrade、flow-backup/restore、安装手册；定制 img 未做 |
-| T12 LLM 主路径 | 未实现 | 规则引擎就是 LLM 失败时的兜底路径，后续 LLM 适配器可直接复用 |
+| **T12 LLM 主路径** | 已完成（待真机联调） | `app/planner/llm.py`：`LlmEngine` 与 `RuleEngine` 同签名，OpenAI 兼容接口（DeepSeek 默认）、JSON 强约束、3–7 步/15–45 分钟/首步 ≤20 分钟归一化、24h 文件缓存、超时与格式错自动回退规则引擎；`DEEPSEEK_API_KEY` 存在即启用，`/healthz` 只报 `llm.enabled` 不含密钥 |
 
 ## 目录
 
@@ -58,6 +58,7 @@ app/
 │   ├── rules.py         3–7 步拆解
 │   ├── scheduler.py     装箱、缓冲、休息、依赖
 │   ├── validator.py     重叠 / 超期 / 容量 / 依赖 / 动词校验
+│   ├── llm.py           T12 LLM 主路径（DeepSeek/Qwen 兼容、24h 缓存、回退规则）
 │   └── engine.py        RuleEngine 公共入口
 ├── channel/             T04 单通道
 │   ├── base.py          Channel / Intent / Action / Context

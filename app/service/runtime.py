@@ -35,6 +35,7 @@ from phone.inbox import FileInbox
 from phone.service import PhoneSessionService
 from phone.usage import UsageService
 from plan.service import PlanService
+from planner.llm import default_engine
 from planner.timeutil import tz_for
 from recovery import RecoveryReport
 from users.service import UserService
@@ -146,7 +147,14 @@ class Runtime:
             camera=hal.camera if hal is not None else None,
             inbox=str(self.settings.data.dir / "inbox"),
         )
-        self.plan_service = PlanService(self.repos, publisher=self.bus)
+        self.plan_service = PlanService(
+            self.repos,
+            publisher=self.bus,
+            engine=default_engine(
+                settings=self.settings.llm,
+                cache_path=self.settings.data.dir / "llm_cache.json",
+            ),
+        )
         self.analytics = AnalyticsService(
             self.repos,
             publisher=self.bus,
@@ -438,6 +446,9 @@ class Runtime:
                 "timezone": self.settings.app.timezone,
                 "hal_backend": self.settings.hal.backend,
                 "ui_size": self.settings.ui.size,
+                # T12: whether the LLM path is on; the key itself never leaks.
+                "llm_enabled": self.settings.llm.available,
+                "llm_model": self.settings.llm.model,
             },
         }
 

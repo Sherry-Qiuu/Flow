@@ -10,6 +10,7 @@ from typing import Any
 
 import yaml
 
+from planner.llm import LlmSettings, settings_from_env
 from planner.timeutil import tz_for
 from voice.config import SpeechSettings
 
@@ -71,6 +72,16 @@ _DEFAULTS: dict[str, Any] = {
         "level": "INFO",
         "json": True,
     },
+    # T12 LLM main path. The key itself is never stored here: it comes from
+    # DEEPSEEK_API_KEY in .env, so /healthz and logs stay secret-free.
+    "llm": {
+        "enabled": True,
+        "base_url": "https://api.deepseek.com",
+        "model": "deepseek-chat",
+        "timeout_s": 8.0,
+        "cache_ttl_s": 86400,
+        "temperature": 0.2,
+    },
     "ui": {
         "url": "http://127.0.0.1:8000",
         "size": "720x720",
@@ -130,6 +141,7 @@ class Settings:
     voice: SpeechSettings = field(default_factory=SpeechSettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     ui: UiSettings = field(default_factory=UiSettings)
+    llm: LlmSettings = field(default_factory=LlmSettings)
     config_path: Path | None = None
     env_file: Path | None = None
 
@@ -164,6 +176,14 @@ class Settings:
                 "json": self.logging.json,
             },
             "ui": {"url": self.ui.url, "size": self.ui.size},
+            # Never exposes api_key: /healthz only reports whether AI is on.
+            "llm": {
+                "enabled": self.llm.available,
+                "model": self.llm.model,
+                "base_url": self.llm.base_url,
+                "timeout_s": self.llm.timeout_s,
+                "cache_ttl_s": self.llm.cache_ttl_s,
+            },
         }
 
 
@@ -269,6 +289,15 @@ def load_settings(
         url=str(raw["ui"]["url"]),
         size=str(raw["ui"]["size"]),
     )
+    llm = settings_from_env(
+        values,
+        base_url=str(raw["llm"]["base_url"]),
+        model=str(raw["llm"]["model"]),
+        timeout_s=float(raw["llm"]["timeout_s"]),
+        cache_ttl_s=int(raw["llm"]["cache_ttl_s"]),
+        temperature=float(raw["llm"]["temperature"]),
+        enabled=bool(raw["llm"]["enabled"]),
+    )
     _validate(app, hal)
     return Settings(
         app=app,
@@ -278,6 +307,7 @@ def load_settings(
         voice=voice,
         logging=logging_settings,
         ui=ui,
+        llm=llm,
         config_path=config_path,
         env_file=selected_env_file,
     )
