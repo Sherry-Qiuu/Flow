@@ -105,3 +105,24 @@ def test_hardware_runbook_exists_with_commands():
     assert "flow-hal" in text
     assert "curl" in text
     assert "90 秒" in text
+
+
+def test_hardware_handoff_doc_covers_team_handoff():
+    path = ROOT / "docs/deployment/T01-hardware-handoff.md"
+    assert path.is_file()
+    text = path.read_text(encoding="utf-8")
+    for token in (
+        "交接边界",
+        "物料清单",
+        "GPIO27",
+        "flow-hal",
+        "flow-backend",
+        "flow-ui",
+        "T01-01",
+        "T02-07",
+        "签收",
+        "T20-HW",
+    ):
+        assert token in text, token
+    assert "T01-hardware-runbook.md" in text
+    assert "T01" in text and "T02" in text

@@ -114,7 +114,8 @@
 - [ ] **完整体验**：养成游戏、分心画像、周报、手机文件通道
 
 实现范围、运行命令与验收对照见 [DEVELOPMENT.md](DEVELOPMENT.md)；
-树莓派上机步骤见 [T01 硬件手册](docs/deployment/T01-hardware-runbook.md)。
+树莓派上机步骤见 [T01 硬件手册](docs/deployment/T01-hardware-runbook.md)；
+团队分工、物料、测试矩阵和签收表见 [硬件交接说明](docs/deployment/T01-hardware-handoff.md)。
 
 ## 关于
 

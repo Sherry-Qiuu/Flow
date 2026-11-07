@@ -7,6 +7,8 @@
 > 先读：[H02 树莓派首次开机](../hardware-tutorials/H02-树莓派首次开机.md)、
 > [A 接线总图与引脚分配](../hardware-tutorials/A-接线总图与引脚分配.md)、
 > [D 安全手册](../hardware-tutorials/D-安全手册与红线.md)。
+>
+> 团队分工、物料、测试矩阵和签收表见 [T01 硬件交接说明](T01-hardware-handoff.md)。
 
 ## 0. 先明确：哪些我做、哪些你做
 
