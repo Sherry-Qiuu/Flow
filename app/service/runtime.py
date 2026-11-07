@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from bus.event_bus import EventBus
+from gesture.service import GestureService
 from hal.factory import Hal
 from service.config import Settings
 from service.db import Database
@@ -41,6 +42,7 @@ class Runtime:
         self.db = Database(settings.data.db_path)
         self.hal = HalService(settings.hal, self.bus, hal)
         self.scheduler = SchedulerService(settings.scheduler)
+        self.gesture: GestureService | None = None
         self.hub = WebSocketHub(self.bus, self.snapshot)
         self.state = RuntimeState()
         self.started_at: datetime | None = None
@@ -62,6 +64,15 @@ class Runtime:
         )
         await self._start("db", self.db.start, thread=True)
         await self._start("hal", self.hal.start, thread=True)
+        hal = self.hal.hal
+        self.gesture = GestureService(
+            self.settings.gesture,
+            self.bus,
+            gesture=hal.gesture if hal is not None else None,
+            phone_stand=hal.phone_stand if hal is not None else None,
+            subscriber=self.bus,
+        )
+        await self._start("gesture", self.gesture.start)
         await self._start("scheduler", self.scheduler.start)
         await self._start("websocket", self.hub.start)
         logger.info(
@@ -79,6 +90,8 @@ class Runtime:
         )
         await self.hub.stop()
         self.scheduler.stop()
+        if self.gesture is not None:
+            self.gesture.stop()
         await asyncio.to_thread(self.hal.stop)
         await asyncio.to_thread(self.db.stop)
         await self.bus.aclose()
@@ -103,7 +116,11 @@ class Runtime:
                     result = await result
             status = result
             if not isinstance(status, ServiceStatus):
-                status = ServiceStatus.ok(name)
+                status = ServiceStatus(
+                    name,
+                    getattr(result, "state", "ok"),
+                    getattr(result, "detail", ""),
+                )
         except Exception as exc:
             logger.exception(
                 "subsystem failed to start",
@@ -160,14 +177,36 @@ class Runtime:
             },
             "hal": self.hal.device_snapshot(),
             "phone": self.hal.phone_state(),
+            "gesture": (
+                self.gesture.snapshot()
+                if self.gesture is not None
+                else {"enabled": False, "started": False}
+            ),
             "ui": {"size": self.settings.ui.size},
         }
 
     def _health_statuses(self) -> dict[str, ServiceStatus]:
+        gesture_status = (
+            self.gesture.health()
+            if self.gesture is not None
+            else None
+        )
         return {
             "db": self.db.health(),
             "hal": self.hal.health(),
             "scheduler": self.scheduler.health(),
+            "gesture": (
+                ServiceStatus(
+                    "gesture",
+                    gesture_status.state,
+                    gesture_status.detail,
+                )
+                if gesture_status is not None
+                else ServiceStatus.disabled(
+                    "gesture",
+                    "gesture service not started",
+                )
+            ),
             "websocket": self.hub.health(),
         }
 

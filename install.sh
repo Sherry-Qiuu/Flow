@@ -133,6 +133,9 @@ if [ "${SOURCE_DIR}" != "${FLOW_HOME}" ]; then
     --exclude='.pip_tmp' \
     --exclude='.pytest_cache' \
     --exclude='pytest-cache-files-*' \
+    --exclude='node_modules' \
+    --exclude='ui/node_modules' \
+    --exclude='ui/.vite' \
     --exclude='__pycache__' \
     "${SOURCE_DIR}/" "${FLOW_HOME}/"
 fi
@@ -172,6 +175,9 @@ export PIP_NO_CACHE_DIR=1
 "${VENV_PY}" -m pip install --no-build-isolation "${FLOW_HOME}"
 if [ "${WITH_REAL}" -eq 1 ]; then
   "${VENV_PY}" -m pip install --no-build-isolation "${FLOW_HOME}[pi]"
+  # PAJ7620 is optional: missing it only hides gesture input.
+  "${VENV_PY}" -m pip install --no-cache-dir paj7620 2>/dev/null || \
+    echo "warning: paj7620 not installed; gesture input stays unavailable"
 fi
 if [ "${WITH_OPENCV}" -eq 1 ]; then
   "${VENV_PY}" -m pip install --no-cache-dir opencv-python

@@ -56,10 +56,12 @@ def test_healthz_returns_version_uptime_and_subsystems(workspace_tmp):
         "db",
         "hal",
         "scheduler",
+        "gesture",
         "websocket",
     }
     assert payload["subsystems"]["db"]["state"] == "ok"
     assert payload["subsystems"]["hal"]["state"] == "ok"
+    assert payload["subsystems"]["gesture"]["state"] == "ok"
 
 
 def test_trace_header_is_echoed_and_generated(workspace_tmp):

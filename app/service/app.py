@@ -6,13 +6,20 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from bus.event_bus import EventBus
 from hal.factory import Hal
-from service.api import install_exception_handlers, router
+from service.api import (
+    install_exception_handlers,
+    placeholder_html,
+    router,
+)
 from service.config import Settings, load_settings
 from service.middleware import TraceIdMiddleware
 from service.runtime import Runtime
+from service.ui_static import find_ui_dist
 
 
 def ensure_single_worker(env: dict[str, str] | None = None) -> None:
@@ -60,6 +67,34 @@ def create_app(
     app.add_middleware(TraceIdMiddleware)
     app.include_router(router)
     install_exception_handlers(app)
+
+    ui_dist = find_ui_dist()
+    app.state.ui_dist = ui_dist
+    if ui_dist is not None:
+        assets = ui_dist / "assets"
+        if assets.is_dir():
+            app.mount(
+                "/assets",
+                StaticFiles(directory=str(assets)),
+                name="ui-assets",
+            )
+
+        @app.get("/", include_in_schema=False)
+        def ui_index() -> FileResponse:
+            return FileResponse(ui_dist / "index.html")
+
+        favicon = ui_dist / "favicon.svg"
+        if favicon.is_file():
+
+            @app.get("/favicon.svg", include_in_schema=False)
+            def ui_favicon() -> FileResponse:
+                return FileResponse(favicon)
+
+    else:
+
+        @app.get("/", response_class=HTMLResponse)
+        def placeholder_index() -> str:
+            return placeholder_html()
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:

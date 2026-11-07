@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from service.logging import get_trace_id
@@ -67,8 +67,7 @@ def system_status(request: Request) -> dict[str, Any]:
     return runtime.snapshot()
 
 
-@router.get("/", response_class=HTMLResponse)
-def index() -> str:
+def placeholder_html() -> str:
     if _PLACEHOLDER.exists():
         return _PLACEHOLDER.read_text(encoding="utf-8")
     return "<h1>Flow</h1>"

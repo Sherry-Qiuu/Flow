@@ -18,6 +18,16 @@ scheduler:
   # T15 is not implemented yet; the lifecycle slot is still reserved.
   enabled: false
 
+gesture:
+  enabled: true
+  approach_cm: 60
+  leave_cm: 300
+  leave_hold_s: 60
+  cooldown_s: 1.5
+  debounce_frames: 5
+  min_votes: 2
+  poll_ms: 50
+
 logging:
   level: "INFO"
   json: true

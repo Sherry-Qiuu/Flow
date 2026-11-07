@@ -196,9 +196,9 @@ FLOW_PHONE_POLL_MS=100
 | --- | --- | --- |
 | T01 服务/kiosk/诊断 | 已交付 | 见本文第 5 节 |
 | T02 HAL/自检 | 已交付（mock 全绿，真实待上机） | 真实驱动需在 Pi 上验证 |
-| T03 后端/WS/健康检查 | 已交付 | scheduler 目前 `disabled` |
-| T05 正式 UI | 未完成 | 当前是占位页；显示/重连可用 |
-| T09 手势真驱动 | 未完成 | 硬件可先装好、I2C 可扫；软件后续接 |
+| T03 后端/WS/健康检查 | 已交付 | scheduler 目前 `disabled`；gesture 子系统已接入 |
+| T05 正式 UI | 已交付 | React + Vite + TS + Tailwind + Motion；720 画布、8 表情、自动重连 |
+| T09 手势真驱动 | 核心已交付 | PAJ7620 驱动 + detector/presence + `gesture.detected`；T04 路由和真实 ToF 待接 |
 | T04 STOP/工具路由 | 未完成 | 按钮可先接、可测通断；软件后续接 |
 | T16 振动反馈 | 未完成 | 马达可先装、可测；软件后续接 |
 | T20 手机在位/充电契约 | 未完成 | T02 已提供 GPIO/INA219 读取；T20 再接业务 |
@@ -329,7 +329,9 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/websocket`。
+期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/gesture/websocket`。
+`scheduler` 显示 `disabled` 是正常，T15 还没做；没有接 PAJ7620 时 `gesture` 也显示
+`disabled`，不影响后端启动。
 
 WebSocket：
 
@@ -376,9 +378,9 @@ sudo flow-diag --with-selftest
 | T01-01 | 系统启动 | 接电源/电池开机 | 90 秒内进入 Flow 界面 | | 计时视频 |
 | T01-02 | 网络/SSH | `ssh flow@flow.local` | 能登录 | | 终端截图 |
 | T01-03 | 服务状态 | `systemctl status flow-hal flow-backend flow-ui` | 三个服务 active | | 截图 |
-| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/websocket 可见 | | JSON |
+| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/gesture/websocket 可见 | | JSON |
 | T01-05 | WS | 5.4 的 Python 脚本 | 收到 `state.sync` | | 终端输出 |
-| T01-06 | 中文 | 屏幕显示占位页 | 无方块/截断 | | 屏幕照片 |
+| T01-06 | 中文 | 屏幕显示 Flow UI | 无方块/截断 | | 屏幕照片 |
 | T01-07 | 分辨率 | 屏幕设置/照片 | 720×720（或 T05 设计画布） | | 照片 |
 | T01-08 | 离线启动 | 拔网线重启 | 仍进入界面，显示离线/重连 | | 视频/照片 |
 | T01-09 | 日志 | `journalctl -b -u flow-backend -n 100` | 无异常堆栈、无字体缺失 | | 日志 |

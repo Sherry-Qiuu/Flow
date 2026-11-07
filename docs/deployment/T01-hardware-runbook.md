@@ -177,6 +177,15 @@ aplay /tmp/test.wav
 i2cdetect -y 1
 ```
 
+PAJ7620 还需要 Python 驱动；安装脚本会尝试，失败时可以手动补：
+
+```bash
+sudo /opt/flow/.venv/bin/pip install paj7620
+sudo systemctl restart flow-backend
+```
+
+手势服务缺失时 `/healthz` 里 `gesture` 会显示 `disabled`，不会影响摄像头/语音。
+
 ## 7. 启动后端并验证接口
 
 ```bash
@@ -185,7 +194,7 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`websocket`。
+预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`gesture`、`websocket`。
 `scheduler` 当前是 `disabled`，因为 T15 还没实现，这是预期状态。
 
 WebSocket 连接测试（用 venv 里的 websockets）：
@@ -239,8 +248,8 @@ sudo reboot
 重启后不要手动登录，观察：
 
 1. **90 秒内**屏幕进入 Flow 界面（不是登录提示符/桌面）。
-2. 拔掉网线再重启，界面仍能起来；页面显示离线状态（T05 会替换成正式 UI，
-   当前占位页已带断线重连逻辑）。
+2. 拔掉网线再重启，界面仍能起来；T05 UI 会显示离线角标，后端 WS 断开时
+   自动重连并重新同步状态。
 3. `journalctl -b -u flow-backend --no-pager | tail -50` 能看到完整启动日志。
 4. `journalctl -b -u flow-ui --no-pager | tail -30` 没有字体缺失警告。
 5. 中文在目标屏幕上无方块、无截断。

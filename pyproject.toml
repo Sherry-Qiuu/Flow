@@ -29,6 +29,7 @@ real = [
     "gpiozero>=2",
     "lgpio>=0.2",
     "ina219>=0.3",
+    "paj7620",
 ]
 pi = [
     "Pillow>=10",
@@ -38,7 +39,15 @@ pi = [
 
 [tool.setuptools]
 package-dir = { "" = "app" }
-packages = ["bus", "hal", "hal.mock", "hal.real", "planner", "service"]
+packages = [
+    "bus",
+    "gesture",
+    "hal",
+    "hal.mock",
+    "hal.real",
+    "planner",
+    "service",
+]
 
 [tool.setuptools.package-data]
 service = ["placeholder.html"]
