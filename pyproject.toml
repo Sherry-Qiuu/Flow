@@ -28,12 +28,12 @@ real = [
     "opencv-python>=4.8",
     "gpiozero>=2",
     "lgpio>=0.2",
-    "ina219>=0.3",
+    "pi-ina219>=1.4",
 ]
 pi = [
     "Pillow>=10",
     "sounddevice>=0.4",
-    "ina219>=0.3",
+    "pi-ina219>=1.4",
 ]
 
 [tool.setuptools]
