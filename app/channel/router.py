@@ -34,7 +34,11 @@ CONTROL_WORDS: dict[str, tuple[str, ...]] = {
     "resume": ("继续", "恢复"),
     "finish": ("结束", "完成计时", "停止"),
     "done": ("完成第一条", "做完了", "完成"),
-    "play": ("播放", "放音乐"),
+    # Not 「放音乐」: anything mentioning 音乐 is an alias for the music
+    # channel, which is checked before this table's contains-pass. Listing it
+    # here never matched, and a table entry that cannot fire hides the real
+    # behaviour ("say 放音乐 and the music screen opens; say 播放 to play").
+    "play": ("播放",),
     "next": ("下一首", "换一首"),
     "skip": ("跳过", "跳这一步", "换下一步", "换一个"),
     "extend": ("再来", "再给", "延长", "多给"),

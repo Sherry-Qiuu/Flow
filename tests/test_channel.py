@@ -281,3 +281,21 @@ def test_router_priority_table():
     assert route("再给我十分钟").args["minutes"] == 10
     assert route("再来五分钟").args["minutes"] == 5
     assert route("我要专注半小时").args["minutes"] == 30
+
+
+def test_every_control_word_still_reaches_its_own_intent():
+    """A word added to a later table must not be eaten by an earlier one.
+
+    Two tables scan ``CONTROL_WORDS``: the leading-verb pass and the
+    contains-pass. A phrase listed in the second table but also present as a
+    leading verb elsewhere silently changes meaning, so walk the whole table.
+    """
+    from channel.router import CONTROL_WORDS
+
+    wrong = {
+        f"{name}: {word}": route(word).name
+        for name, words in CONTROL_WORDS.items()
+        for word in words
+        if route(word).name != name
+    }
+    assert not wrong, wrong
