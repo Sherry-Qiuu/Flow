@@ -184,3 +184,20 @@ def test_planless_timer_finishes_without_touching_plan_items(workspace_tmp):
         assert result["ok"] is True
         assert result["done"] is True
         assert client.get("/api/focus").json()["status"] == "idle"
+
+
+def test_wanting_to_focus_hands_over_a_running_timer(workspace_tmp):
+    """README promise: 「我要专注 25 分钟」 gives a timer, not a menu."""
+    from channel.router import route
+
+    intent = route("我要专注 25 分钟")
+    assert intent.name == "start"
+    assert intent.args == {"open_focus": True, "minutes": 25}
+
+    client = make_client(workspace_tmp)
+    with client:
+        client.post("/api/intent", json={"text": "我要专注 25 分钟"})
+        focus = client.get("/api/focus").json()
+        assert focus["status"] == "running"
+        assert focus["total_ms"] == 25 * 60 * 1000
+        assert client.get("/api/system/status").json()["phase"] == "executing"

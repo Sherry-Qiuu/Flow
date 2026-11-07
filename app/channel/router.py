@@ -45,12 +45,36 @@ PLAN_PHRASES = (
     "规划一下",
 )
 
+# Saying you want to focus is a request to start, not to look at the timer
+# (README: 「我要专注 25 分钟」 hands over a running timer).
+FOCUS_START_PHRASES = (
+    "我要专注",
+    "我想专注",
+    "想专注",
+    "来个专注",
+    "专注一下",
+    "开始专注",
+    "开始计时",
+)
+
 
 def route(text: str, *, source: str = "voice") -> Intent:
     normalized = " ".join(str(text or "").strip().split())
     if not normalized:
         return Intent(name="unknown", text=normalized, source=source)
     lowered = normalized.lower()
+
+    for phrase in FOCUS_START_PHRASES:
+        if lowered.startswith(phrase):
+            args: dict[str, Any] = {"open_focus": True}
+            args.update(_tool_args("focus", normalized))
+            return Intent(
+                name="start",
+                text=normalized,
+                source=source,
+                args=args,
+                confidence=0.85,
+            )
 
     for phrase in PLAN_PHRASES:
         if phrase in lowered:
