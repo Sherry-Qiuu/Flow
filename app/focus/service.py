@@ -13,11 +13,9 @@ from typing import Any
 
 from bus import topics
 from data.repositories import Repositories
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
-
 
 @dataclass
 class FocusState:
@@ -89,7 +87,7 @@ class FocusService:
         self.publisher = publisher
         self.say = say
         self.store = FocusStateStore(store_path)
-        self.now_fn = now_fn or (lambda: datetime.now(TZ))
+        self.now_fn = now_fn or (lambda: datetime.now(default_tz()))
         self.clock = clock
         self.state = FocusState()
         self._stop = threading.Event()
@@ -112,8 +110,8 @@ class FocusService:
                         0,
                         int(
                             (
-                                self.now_fn().astimezone(TZ)
-                                - saved.astimezone(TZ)
+                                self.now_fn().astimezone(default_tz())
+                                - saved.astimezone(default_tz())
                             ).total_seconds()
                         ),
                     )
@@ -220,6 +218,11 @@ class FocusService:
             return self._advance("skipped")
         elif action == "stuck":
             return self._stuck()
+        elif action == "split":
+            # "换小一点" is the user agreeing up front, so shrink immediately
+            # instead of asking the stuck path a second time.
+            self.state.stuck_count = max(1, self.state.stuck_count) + 1
+            return self._stuck()
         elif action == "extend":
             extra = max(1, min(30, int(minutes or 10))) * 60
             self.state.remaining_s += extra
@@ -323,7 +326,8 @@ class FocusService:
 
     def _stuck(self) -> dict[str, Any]:
         self.state.stuck_count += 1
-        if self.state.stuck_count >= 2:
+        split = self.state.stuck_count >= 2
+        if split:
             self.state.title = f"先做 5 分钟：{self.state.title}"
             self.state.total_s = min(self.state.total_s, 300)
             self.state.remaining_s = min(self.state.remaining_s, 300)
@@ -331,9 +335,13 @@ class FocusService:
             self.state.stuck_count = 0
             self._publish("focus.split", {"title": self.state.title})
             self._say("把这一步缩小到 5 分钟，先动起来")
+        else:
+            # Speaking only on the second signal meant the first 「太难了」
+            # was answered with silence. Acknowledge it every time.
+            self._say("这一步比预想的难，要不要换成更小的一步？")
         self._publish_state()
         self._persist()
-        return {"ok": True, "state": self.state.snapshot()}
+        return {"ok": True, "state": self.state.snapshot(), "split": split}
 
     def _loop(self) -> None:
         while not self._stop.wait(1.0):

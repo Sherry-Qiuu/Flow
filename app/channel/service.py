@@ -20,7 +20,22 @@ logger = logging.getLogger(__name__)
 _CONTROL_ACTIONS = frozenset({"back", "channel.snapshot"})
 
 # ``focus.control`` / ``ui.action`` from the touch UI; these are intent names.
-FOCUS_COMMANDS = frozenset({"start", "resume", "pause", "finish", "stop"})
+# The timer already supported skip/extend/split; the whitelist was the reason
+# the touch UI and the voice path could not reach them.
+FOCUS_COMMANDS = frozenset(
+    {
+        "start",
+        "resume",
+        "pause",
+        "finish",
+        "stop",
+        "skip",
+        "extend",
+        "split",
+        "stuck",
+        "status",
+    }
+)
 
 # Touch channel shortcuts exposed by ``ui.action``.
 UI_COMMANDS = {

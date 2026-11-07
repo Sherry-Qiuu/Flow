@@ -252,3 +252,32 @@ def test_api_intent_rejects_empty_text(workspace_tmp):
         response = client.post("/api/intent", json={"text": ""})
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_router_priority_table():
+    """Order matters, so pin the pairs that used to collide.
+
+    「开始写论文」 opened a timer because a bare 开始 was a global control
+    verb; 「太难了不想做了」 became a task because it contains 做.
+    """
+    cases = {
+        "开始写论文": ("make_plan", None),
+        "开始": ("start", None),
+        "开始专注 5 分钟": ("start", None),
+        "我要专注25分钟": ("start", None),
+        "太难了不想做了": ("discourage", None),
+        "太难了，帮我打开任务清单": ("open_tool", "tasks"),
+        "跳过这一步": ("skip", None),
+        "再给我十分钟": ("extend", None),
+        "还剩多久": ("status", None),
+        "我回来了": ("return", None),
+        "换小一点": ("split", None),
+        "背单词": ("make_plan", None),
+    }
+    for text, (name, tool) in cases.items():
+        intent = route(text)
+        assert intent.name == name, text
+        assert intent.tool == tool, text
+    assert route("再给我十分钟").args["minutes"] == 10
+    assert route("再来五分钟").args["minutes"] == 5
+    assert route("我要专注半小时").args["minutes"] == 30

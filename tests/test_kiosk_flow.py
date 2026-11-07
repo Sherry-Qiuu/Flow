@@ -245,3 +245,70 @@ def test_asking_for_a_plan_is_not_itself_a_task(workspace_tmp):
         ]
         assert says, "the kiosk stayed silent"
         assert "先告诉我" in says[0]
+
+
+def test_saying_it_is_too_hard_does_not_become_a_task(workspace_tmp):
+    """「太难了不想做了」 is a feeling; it used to be filed as a to-do.
+
+    The planner then answered with 「拆解《太难了不想做了》，写下 3 个完成
+    要点」 on the plan review page, which is worse than saying nothing.
+    """
+    client = make_client(workspace_tmp)
+    with client:
+        with client.websocket_connect("/ws") as websocket:
+            reader = FrameReader(websocket)
+            reader.drain(0.4)
+            intent = client.post(
+                "/api/intent",
+                json={"text": "太难了不想做了"},
+            ).json()["intent"]
+            frames = reader.drain(1.2)
+        assert intent["name"] == "discourage"
+        status = client.get("/api/system/status").json()
+        assert status["tasks_count"] == 0
+        assert status["phase"] == "idle"
+        says = [
+            frame["payload"].get("text", "")
+            for frame in frames
+            if frame["type"] == "assistant.say"
+        ]
+        assert says, "the kiosk stayed silent when the user was struggling"
+        assert "我在" in says[0]
+
+
+def test_being_stuck_inside_a_timer_shrinks_the_step(workspace_tmp):
+    """Inside a session the same sentence must reach FocusService._stuck."""
+    client = make_client(workspace_tmp)
+    with client:
+        client.post("/api/intent", json={"text": "开始专注 25 分钟"})
+        client.post("/api/intent", json={"text": "太难了"})
+        first = client.get("/api/focus").json()
+        assert first["status"] == "running"
+        # First signal only acknowledges; the step keeps its original title.
+        assert first["title"] == "专注"
+        client.post("/api/intent", json={"text": "太难了"})
+        second = client.get("/api/focus").json()
+        assert second["title"].startswith("先做 5 分钟")
+        assert second["total_ms"] <= 5 * 60 * 1000
+
+
+def test_focus_verbs_are_reachable_by_voice(workspace_tmp):
+    """skip / extend / status existed in FocusService but no voice path."""
+    client = make_client(workspace_tmp)
+    with client:
+        client.post("/api/intent", json={"text": "开始专注 20 分钟"})
+        client.post("/api/intent", json={"text": "再给我十分钟"})
+        extended = client.get("/api/focus").json()
+        assert extended["total_ms"] == 30 * 60 * 1000
+
+        said = client.post(
+            "/api/intent",
+            json={"text": "还剩多久"},
+        ).json()
+        assert said["intent"]["name"] == "status"
+        assert any(
+            action["type"] == "speak" for action in said["actions"]
+        )
+
+        client.post("/api/intent", json={"text": "跳过这一步"})
+        assert client.get("/api/focus").json()["status"] == "idle"

@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from channel import focus_verbs
 from channel.base import Action, BaseChannel, ChannelContext, Intent
 
 
@@ -91,6 +92,9 @@ class FocusChannel(BaseChannel):
             if active:
                 focus.control("finish")
             return [Action("speak", {"text": "这一步完成，休息一下"})]
+        shared = focus_verbs.handle(focus, Intent(name))
+        if shared is not None:
+            return shared
         if name == "back":
             return [Action("back", {})]
         return []

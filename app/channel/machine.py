@@ -10,10 +10,14 @@ from collections.abc import Callable
 from typing import Any
 
 from bus import topics
+from channel import focus_verbs
 from channel.base import Action, Channel, ChannelContext, Intent
 from channel.registry import ChannelRegistry
 
 logger = logging.getLogger(__name__)
+
+# Verbs that act on the running timer rather than on the current channel.
+_FOCUS_VERBS = frozenset({"skip", "extend", "status", "split", "stuck"})
 
 
 class ChannelMachine:
@@ -130,6 +134,50 @@ class ChannelMachine:
         with self._lock:
             if intent.name == "make_plan":
                 return [Action(topics.PLAN_REQUESTED, {"text": intent.text})]
+            if intent.name == "discourage":
+                # 「太难了」 is a feeling. Inside a timer it means "this step is
+                # too big" (FocusService shrinks it); anywhere else it gets a
+                # reply, never a task named after the sentence.
+                if (
+                    self._current is not None
+                    and self._current.key == "focus"
+                ):
+                    return self._current.handle(
+                        Intent(
+                            "stuck",
+                            text=intent.text,
+                            source=intent.source,
+                        )
+                    )
+                return [
+                    Action(
+                        "speak",
+                        {"text": focus_verbs.COMFORT_REPLY},
+                    )
+                ]
+            if intent.name in _FOCUS_VERBS and (
+                self._current is None or self._current.key != "focus"
+            ):
+                actions = focus_verbs.handle(
+                    getattr(self.ctx, "focus", None),
+                    intent,
+                )
+                if actions is not None:
+                    return actions
+            if intent.name == "return":
+                if (
+                    self._current is not None
+                    and self._current.key == "focus"
+                ):
+                    return self._current.handle(
+                        Intent("status", source=intent.source)
+                    )
+                return [
+                    Action(
+                        "speak",
+                        {"text": "我在。要不要说“打开任务清单”接着来？"},
+                    )
+                ]
             if intent.name == "open_tool":
                 if not intent.tool or not self.registry.has(intent.tool):
                     return [
