@@ -39,16 +39,26 @@ pi = [
 [tool.setuptools]
 package-dir = { "" = "app" }
 packages = [
+    "analytics",
     "bus",
+    "capture",
     "channel",
     "channel.builtin",
     "data",
+    "demo",
+    "dialogue",
+    "emotion",
+    "focus",
     "hal",
     "hal.mock",
     "hal.real",
     "phone",
+    "plan",
     "planner",
+    "scheduler",
     "service",
+    "setup",
+    "users",
     "voice",
 ]
 

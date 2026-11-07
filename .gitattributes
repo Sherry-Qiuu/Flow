@@ -1,0 +1,6 @@
+# Shell scripts and Pi deploy assets must keep LF line endings even when
+# edited from Windows (core.autocrlf would otherwise break bash on the Pi).
+*.sh text eol=lf
+/install.sh text eol=lf
+/scripts/** text eol=lf
+/deploy/** text eol=lf

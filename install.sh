@@ -121,11 +121,14 @@ done
 
 if [ "${SOURCE_DIR}" != "${FLOW_HOME}" ]; then
   install -d -m 0755 "${FLOW_HOME}"
+  # Exclude patterns are anchored with a leading '/': a bare 'data' would
+  # also match the app/data package and pip then fails with
+  # "package directory 'app/data' does not exist".
   rsync -a --delete \
     --exclude='.git' \
     --exclude='.env' \
     --exclude='.venv' \
-    --exclude='data' \
+    --exclude='/data/' \
     --exclude='config.yaml' \
     --exclude='version.json' \
     --exclude='.test_tmp' \

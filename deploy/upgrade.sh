@@ -12,7 +12,7 @@ if [ ! -d "${SOURCE}" ]; then
 fi
 cp -a "${FLOW_HOME}" "${backup}"
 rsync -a --delete \
-  --exclude='data/' --exclude='.env' --exclude='ui/node_modules' \
+  --exclude='/data/' --exclude='.env' --exclude='ui/node_modules' \
   "${SOURCE}/" "${release}/"
 if ! "${release}/.venv/bin/python" -m pytest -q 2>/dev/null; then
   echo "smoke check skipped (pytest unavailable)"

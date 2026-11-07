@@ -154,3 +154,42 @@ def test_restore_command_and_data_layer_are_installed():
     assert "scripts/flow-restore" in (
         ROOT / "install.sh"
     ).read_text(encoding="utf-8")
+
+
+def test_rsync_excludes_are_anchored_to_the_root():
+    """An unanchored 'data' exclude also drops the app/data package."""
+    import re
+
+    pattern = re.compile(r"--exclude='(?P<name>[^'/]+/?)'")
+    for relative in ("install.sh", "deploy/upgrade.sh"):
+        text = read(relative)
+        for match in pattern.finditer(text):
+            assert match.group("name") != "data", (
+                f"{relative} excludes bare 'data', which also matches "
+                "app/data and breaks pip install"
+            )
+        assert "--exclude='/data/'" in text or relative == "install.sh"
+
+
+def test_pyproject_declares_every_app_package():
+    """pip install fails at runtime if the package list drifts from app/."""
+    import tomllib
+
+    declared = set(
+        tomllib.loads(read("pyproject.toml"))["tool"]["setuptools"]["packages"]
+    )
+    actual = set()
+    for child in (ROOT / "app").iterdir():
+        if child.is_dir() and (child / "__init__.py").is_file():
+            actual.add(child.name)
+            for grandchild in child.iterdir():
+                if (
+                    grandchild.is_dir()
+                    and (grandchild / "__init__.py").is_file()
+                ):
+                    actual.add(f"{child.name}.{grandchild.name}")
+    assert declared == actual, (
+        f"pyproject packages drifted from app/: "
+        f"missing={sorted(actual - declared)} "
+        f"extra={sorted(declared - actual)}"
+    )
