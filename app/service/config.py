@@ -101,11 +101,24 @@ class AppSettings:
 
 @dataclass(frozen=True)
 class DataSettings:
+    """Every path is a ``Path``, even when a caller passes a string.
+
+    A plain dataclass does not coerce, so ``DataSettings(dir="data")`` used to
+    hand a str to ``data.dir / "audio"`` and blow up inside ``runtime.start``
+    with ``TypeError: unsupported operand type(s) for /``.
+    """
+
     dir: Path = Path("data")
     db_path: Path = Path("data/flow.db")
     backup_dir: Path = Path("data/backup")
     backup_keep: int = 7
     backup_hour: int = 3
+
+    def __post_init__(self) -> None:
+        for name in ("dir", "db_path", "backup_dir"):
+            value = getattr(self, name)
+            if not isinstance(value, Path):
+                object.__setattr__(self, name, Path(str(value)))
 
 
 @dataclass(frozen=True)

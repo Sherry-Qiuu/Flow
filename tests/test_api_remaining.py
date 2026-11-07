@@ -109,3 +109,28 @@ def test_remaining_api_smoke(workspace_tmp):
 
         reset = client.post("/api/demo/reset")
         assert reset.status_code == 200
+
+
+def test_upload_looks_at_the_cap_before_buffering(workspace_tmp):
+    """A 2 GB POST used to be read into RAM before the 20 MB rule ran."""
+    root = workspace_tmp / f"upload-cap-{uuid.uuid4().hex}"
+    with make_client(root) as client:
+        client.app.state.runtime.inbox.max_bytes = 1024
+        too_big = client.post(
+            "/api/files",
+            content=b"x" * 4096,
+            headers={"X-Filename": "big.pdf"},
+        )
+        assert too_big.status_code == 413, too_big.text
+        body = too_big.json()["error"]
+        assert body["code"] == "file_too_large"
+        assert body["message"] != ""
+        # The file never reached the index.
+        assert client.get("/api/files").json()["items"] == []
+
+        ok = client.post(
+            "/api/files",
+            content=b"%PDF-1.4 small",
+            headers={"X-Filename": "small.pdf"},
+        )
+        assert ok.status_code == 200, ok.text

@@ -401,9 +401,23 @@ async def upload_file(request: Request) -> dict[str, Any]:
     if runtime is None or runtime.inbox is None:
         raise ApiError("not_ready", "inbox not ready", 503)
     filename = request.headers.get("X-Filename", "upload")
-    data = await request.body()
+    limit = runtime.inbox.max_bytes
+    detail = f"file exceeds {limit // (1024 * 1024)} MB"
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > limit:
+        raise ApiError("file_too_large", detail, 413)
+    # Reading the whole body first and checking the size afterwards means a
+    # single large POST can exhaust the Pi's memory before the 20 MB rule
+    # ever runs. Stream instead, and stop as soon as the cap is passed.
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            raise ApiError("file_too_large", detail, 413)
+        chunks.append(chunk)
     try:
-        return runtime.inbox.save(filename, data)
+        return runtime.inbox.save(filename, b"".join(chunks))
     except ValueError as exc:
         raise ApiError("invalid_file", str(exc), 400) from exc
 

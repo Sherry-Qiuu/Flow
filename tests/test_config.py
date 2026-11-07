@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from service.config import get_secret, load_settings
+from service.config import DataSettings, get_secret, load_settings
 
 
 def write_config(root: Path, body: str) -> Path:
@@ -105,3 +105,17 @@ def test_public_config_has_no_secret_fields():
 def test_invalid_configuration_is_rejected(env, message):
     with pytest.raises(ValueError, match=message):
         load_settings(env={"FLOW_HAL": "mock", **env})
+
+
+def test_data_settings_coerces_string_paths():
+    """A plain dataclass does not coerce, so ``dir`` stayed a str.
+
+    ``runtime.start`` then did ``data.dir / 'audio'`` and raised
+    ``TypeError: unsupported operand type(s) for /``.
+    """
+    data = DataSettings(dir="data", db_path="data/flow.db")
+    assert isinstance(data.dir, Path)
+    assert isinstance(data.db_path, Path)
+    assert isinstance(data.backup_dir, Path)
+    assert data.dir / "audio" == Path("data/audio")
+

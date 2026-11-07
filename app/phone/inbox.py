@@ -39,7 +39,9 @@ class FileInbox:
         if not data:
             raise InboxError("empty file")
         if len(data) > self.max_bytes:
-            raise InboxError("file exceeds 20 MB")
+            raise InboxError(
+                f"file exceeds {self.max_bytes // (1024 * 1024)} MB"
+            )
         suffix = Path(filename).suffix.lower()
         if suffix not in ALLOWED_EXT:
             raise InboxError("file type is not allowed")
