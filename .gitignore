@@ -16,7 +16,9 @@ ui/coverage/
 pytest-cache-files-*/
 .test_tmp/
 .pip_tmp/
-data/
+# Runtime state only. Must stay anchored: a bare "data/" also matches the
+# app/data package and silently kept T10 out of the repository.
+/data/
 *.db
 *.sqlite3
 .env
