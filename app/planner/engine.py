@@ -15,6 +15,7 @@ from planner.estimator import HistoryProvider, estimate_minutes
 from planner.models import PlanDraft, Prefs, SubTask, Task, make_plan_id
 from planner.rules import decompose_task, max_decomposable_minutes
 from planner.scheduler import build_plan
+from planner.timeutil import default_tz_name
 from planner.validator import ValidationResult, validate_plan
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,9 @@ class RuleEngine:
         *,
         strict: bool = False,
     ) -> None:
-        self.prefs = prefs or Prefs()
+        # Windows are placed in the configured display zone, not a frozen
+        # constant, so FLOW_TIMEZONE also moves the plan's evening block.
+        self.prefs = prefs or Prefs(timezone=default_tz_name())
         self.history = history
         self.strict = strict
         self.last_validation: ValidationResult | None = None

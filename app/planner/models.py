@@ -22,6 +22,11 @@ class Category(str, Enum):
     EXPERIMENT = "experiment"
     DISCUSSION = "discussion"
     CODING = "coding"
+    # Drills and mistakes are their own shape of work: read the question,
+    # answer, check, fix the wrong ones. Forcing them into WRITING produced
+    # 「打开文档，列出 3 个核心论点」 for 「刷两套四级真题」.
+    PRACTICE = "practice"
+    PRESENTATION = "presentation"
     GENERAL = "general"
 
 

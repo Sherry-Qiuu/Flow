@@ -127,3 +127,37 @@ def test_all_template_titles_start_with_verbs():
         for template in templates:
             title = template.title.format(task="示例任务")
             assert is_verb_first(title), (category, title)
+
+
+def test_category_words_carry_their_own_estimate():
+    """「论文」 means hours when writing and minutes when reading.
+
+    The hint table used to apply 「论文」 to every category, so 「读一篇论文」
+    was estimated at 180 minutes.
+    """
+    read = Task(id="r1", title="读一篇论文")
+    write = Task(id="w1", title="写论文")
+    assert infer_category(read) is Category.READING
+    assert infer_category(write) is Category.WRITING
+    assert estimate_minutes(read) <= 60
+    assert estimate_minutes(write) >= 180
+
+
+def test_practice_and_presentation_are_their_own_shape():
+    drill = Task(id="d1", title="刷两套四级真题")
+    deck = Task(id="p1", title="做PPT汇报")
+    assert infer_category(drill) is Category.PRACTICE
+    assert infer_category(deck) is Category.PRESENTATION
+    drill_steps = decompose(drill)
+    deck_steps = decompose(deck)
+    assert "题" in drill_steps[0].title
+    assert "汇报" in deck_steps[0].title
+    assert all(is_verb_first(item.title) for item in drill_steps + deck_steps)
+
+
+def test_general_steps_do_not_read_the_task_title_back():
+    """The fallback template used to say 「拆解《太难了不想做了》」 out loud."""
+    task = Task(id="g1", title="购买生活用品")
+    steps = decompose(task)
+    assert all(task.title not in item.title for item in steps)
+    assert all(is_verb_first(item.title) for item in steps)

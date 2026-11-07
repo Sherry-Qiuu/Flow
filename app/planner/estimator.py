@@ -14,6 +14,8 @@ _CATEGORY_BASE = {
     Category.EXPERIMENT: 120,
     Category.DISCUSSION: 60,
     Category.CODING: 90,
+    Category.PRACTICE: 60,
+    Category.PRESENTATION: 90,
     Category.GENERAL: 60,
 }
 
@@ -67,12 +69,44 @@ _KEYWORDS: tuple[tuple[Category, tuple[str, ...]], ...] = (
             "读",
             "看书",
             "预习",
+            "复习",
             "课件",
             "教材",
             "reading",
             "read",
             "chapter",
             "paper",
+        ),
+    ),
+    (
+        Category.PRACTICE,
+        (
+            "刷题",
+            "做题",
+            "习题",
+            "真题",
+            "错题",
+            "试卷",
+            "模拟题",
+            "题库",
+            "选择题",
+            "大题",
+            "刷",
+            "practice",
+            "past paper",
+            "mock",
+        ),
+    ),
+    (
+        Category.PRESENTATION,
+        (
+            "ppt",
+            "幻灯片",
+            "演示文稿",
+            "汇报",
+            "路演",
+            "slides",
+            "presentation",
         ),
     ),
     (
@@ -149,6 +183,30 @@ def estimate_minutes(
     return _clamp(_rule_estimate(task, category))
 
 
+# Copy lengths and task words only mean something in the right category: the
+# 「论文」 hint exists because *writing* one takes hours, and applying it to
+# 「读一篇论文」 turned a 40-minute read into 180 minutes.
+_HINTS: tuple[tuple[tuple[Category, ...] | None, str, float], ...] = (
+    ((Category.WRITING,), "论文", 180.0),
+    ((Category.WRITING,), "essay", 180.0),
+    ((Category.WRITING,), "thesis", 180.0),
+    ((Category.WRITING,), "报告", 120.0),
+    ((Category.WRITING,), "report", 120.0),
+    ((Category.EXPERIMENT,), "实验", 120.0),
+    ((Category.EXPERIMENT,), "experiment", 120.0),
+    ((Category.PRESENTATION,), "汇报", 90.0),
+    ((Category.PRESENTATION,), "演示", 90.0),
+    ((Category.PRESENTATION,), "presentation", 90.0),
+    ((Category.PRESENTATION,), "slides", 90.0),
+    ((Category.PRACTICE,), "真题", 45.0),
+    ((Category.PRACTICE,), "模拟题", 45.0),
+    (None, "复习", 60.0),
+    (None, "review", 60.0),
+    (None, "预习", 45.0),
+    (None, "preview", 45.0),
+)
+
+
 def _rule_estimate(task: Task, category: Category) -> int:
     base = float(_CATEGORY_BASE[category])
     text = f"{task.title} {task.description}"
@@ -179,23 +237,9 @@ def _rule_estimate(task: Task, category: Category) -> int:
     if match:
         base = max(base, int(match.group(1)) * 45.0)
 
-    hints = {
-        "论文": 180.0,
-        "essay": 180.0,
-        "thesis": 180.0,
-        "报告": 120.0,
-        "report": 120.0,
-        "实验": 120.0,
-        "experiment": 120.0,
-        "复习": 60.0,
-        "review": 60.0,
-        "预习": 45.0,
-        "preview": 45.0,
-        "演示": 90.0,
-        "presentation": 90.0,
-        "slides": 90.0,
-    }
-    for keyword, minutes in hints.items():
+    for categories, keyword, minutes in _HINTS:
+        if categories is not None and category not in categories:
+            continue
         if keyword in lowered:
             base = max(base, minutes)
     return int(round(base / 5.0) * 5)
