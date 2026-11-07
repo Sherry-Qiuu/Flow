@@ -179,6 +179,30 @@ def test_non_verb_first_step_falls_back_to_rules():
     assert all(step.source == "rule" for step in steps)
 
 
+def test_one_weak_step_is_dropped_without_sinking_the_task():
+    """「为每个观点找…」was rejected on the Pi; the good steps must survive."""
+    reply = {
+        "tasks": [
+            {
+                "task_id": "t1",
+                "steps": _steps(
+                    ("打开文档", 20),
+                    ("为每个观点找1个例子或数据", 30),
+                    ("写出开头段", 25),
+                    ("整理引用格式", 20),
+                ),
+            }
+        ]
+    }
+    engine, _ = _engine(reply)
+
+    steps = engine.decompose(Task(id="t1", title="写论文"))
+
+    assert len(steps) == 3
+    assert all(step.source == "llm" for step in steps)
+    assert all(is_verb_first(step.title) for step in steps)
+
+
 # -- degradation ------------------------------------------------------
 def test_broken_json_falls_back_within_the_rule_engine():
     engine, client = _engine("这不是 JSON")

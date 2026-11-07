@@ -61,9 +61,11 @@ _STEP_RULES = (
     "拆解要求：\n"
     "1. 拆成 {min_steps}-{max_steps} 步，按执行顺序排列；\n"
     "2. 每一步以动词开头（例如 打开/列出/写出/整理/读/算/做/检查）；\n"
-    "3. 每一步都能独立完成，并且有可判断的完成标准；\n"
-    "4. 单步 {min_step}-{max_step} 分钟，第一步不超过 {max_first} 分钟；\n"
-    "5. 第一步要小到「现在就能开始」，不要写成「完成整篇论文」这种大块。"
+    "3. 标题禁止用「为、把、将、给、用、通过、按照、根据、需要」这类介词或"
+    "助词开头——不要写「为每个观点找例子」，要写「找出每个观点的例子」；\n"
+    "4. 每一步都能独立完成，并且有可判断的完成标准；\n"
+    "5. 单步 {min_step}-{max_step} 分钟，第一步不超过 {max_first} 分钟；\n"
+    "6. 第一步要小到「现在就能开始」，不要写成「完成整篇论文」这种大块。"
 )
 
 _SINGLE_SCHEMA_HINT = (
@@ -664,10 +666,14 @@ def _normalise_steps(
         if not title:
             continue
         if not is_verb_first(title):
+            # One weak title must not sink the whole decomposition; drop the
+            # step and keep the rest if there are still enough of them.
             logger.warning(
-                "rejected non verb-first step for %s: %r", task.id, title[:24]
+                "dropping non verb-first step for %s: %r",
+                task.id,
+                title[:24],
             )
-            return None
+            continue
         minutes = _coerce_int(raw.get("est_minutes"), 0)
         if minutes <= 0:
             minutes = prefs.min_step_minutes
