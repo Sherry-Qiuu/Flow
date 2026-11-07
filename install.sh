@@ -165,6 +165,8 @@ install -m 0755 "${SOURCE_DIR}/deploy/configure-display.sh" \
 sed "s|@FLOW_HOME@|${FLOW_HOME}|g" \
   "${SOURCE_DIR}/deploy/flow-diag" > /usr/local/bin/flow-diag
 chmod 0755 /usr/local/bin/flow-diag
+install -m 0755 "${SOURCE_DIR}/scripts/flow-restore" \
+  /usr/local/bin/flow-restore
 
 if [ ! -x "${FLOW_HOME}/.venv/bin/python" ]; then
   python3 -m venv --system-site-packages "${FLOW_HOME}/.venv"

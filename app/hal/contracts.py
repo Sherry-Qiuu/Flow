@@ -227,6 +227,10 @@ class AudioOut(Device):
     def play(self, path_or_pcm: str | Path | bytes) -> bool:
         ...
 
+    def stop(self) -> None:
+        """Best-effort interrupt for T06 barge-in."""
+        return None
+
     @abstractmethod
     def set_volume(self, value: float) -> None:
         """Set volume in the inclusive 0.0-1.0 range."""

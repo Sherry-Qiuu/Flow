@@ -152,3 +152,12 @@ def test_t05_t09_hardware_increment_handoff():
         assert token in text, token
     assert "T01-hardware-handoff.md" in text
     assert "T01-hardware-runbook.md" in text
+
+
+def test_restore_command_and_data_layer_are_installed():
+    script = ROOT / "scripts/flow-restore"
+    assert script.is_file()
+    assert "data.restore" in script.read_text(encoding="utf-8")
+    assert "scripts/flow-restore" in (
+        ROOT / "install.sh"
+    ).read_text(encoding="utf-8")

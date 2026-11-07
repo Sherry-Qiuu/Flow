@@ -197,7 +197,8 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`gesture`、`websocket`。
+预期 `status` 为 `ok`，`subsystems` 包含 `db`、`hal`、`scheduler`、`gesture`、`phone`、`voice`、`websocket`。
+`scheduler` 为 `disabled` 是 T15 未实现；没配 ASR 时 `voice` 也是 `disabled`，都不影响其他服务。
 `scheduler` 当前是 `disabled`，因为 T15 还没实现，这是预期状态。
 
 WebSocket 连接测试（用 venv 里的 websockets）：

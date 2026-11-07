@@ -9,6 +9,9 @@ app:
 data:
   dir: "data"
   db_path: "data/flow.db"
+  backup_dir: "data/backup"
+  backup_keep: 7
+  backup_hour: 3
 
 hal:
   # mock | real | auto; FLOW_HAL overrides this value.
@@ -27,6 +30,20 @@ gesture:
   debounce_frames: 5
   min_votes: 2
   poll_ms: 50
+
+voice:
+  enabled: true
+  sample_rate: 16000
+  pre_roll_s: 3.0
+  silence_ms: 300
+  vad_threshold: 0.018
+  min_speech_ms: 120
+  partial_interval_ms: 700
+  max_utterance_s: 30
+  empty_prompt_after: 3
+  barge_in: true
+  barge_in_threshold: 0.03
+  debug_audio: false
 
 logging:
   level: "INFO"

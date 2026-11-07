@@ -15,7 +15,8 @@ export type Channel =
   | "focus"
   | "reminder"
   | "music"
-  | "home";
+  | "home"
+  | "idle";
 
 export type FaceMood =
   | "neutral"
@@ -64,6 +65,10 @@ export interface PhoneState {
 export interface FlowState {
   phase: Phase;
   channel: Channel;
+  channelActive: boolean;
+  channelTitle: string;
+  channelData: Record<string, unknown>;
+  channelHints: string[];
   face: FaceMood;
   message: string;
   clock: string;

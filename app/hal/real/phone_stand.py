@@ -7,6 +7,7 @@ import logging
 import os
 import platform
 import threading
+from datetime import datetime, timezone
 from typing import Any
 
 from bus import topics
@@ -189,6 +190,10 @@ class RealPhoneStand(PhoneStand):
                     continue
                 self._last_published = current
             try:
-                self.publisher.publish(topics.PHONE_CHANGED, current.to_dict())
+                payload = current.to_dict()
+                payload["at"] = datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ).replace("+00:00", "Z")
+                self.publisher.publish(topics.PHONE_CHANGED, payload)
             except Exception:  # pragma: no cover - event bus boundary
                 logger.exception("failed to publish phone.changed")

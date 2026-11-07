@@ -1,62 +1,44 @@
-"""SQLite lifecycle and health probe.
-
-T10 will replace this with the full DAO. T03 only needs WAL mode and a
-working connection so ``/healthz`` can report the db subsystem.
-"""
+"""T03 database lifecycle backed by the T10 data layer."""
 
 from __future__ import annotations
 
-import sqlite3
-import threading
 from pathlib import Path
 
+from data.database import FlowDatabase
 from service.status import ServiceStatus
 
 
 class Database:
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
-        self._connection: sqlite3.Connection | None = None
-        self._lock = threading.RLock()
-        self._last_error = ""
+        self._database = FlowDatabase(self.path)
 
     def start(self) -> ServiceStatus:
-        with self._lock:
-            if self._connection is not None:
-                return ServiceStatus.ok("db", f"sqlite at {self.path}")
-            try:
-                self.path.parent.mkdir(parents=True, exist_ok=True)
-                connection = sqlite3.connect(
-                    str(self.path),
-                    timeout=5.0,
-                    check_same_thread=False,
-                )
-                connection.execute("PRAGMA journal_mode=WAL")
-                connection.execute("PRAGMA synchronous=NORMAL")
-                connection.execute("SELECT 1").fetchone()
-                self._connection = connection
-                self._last_error = ""
-                return ServiceStatus.ok("db", f"sqlite at {self.path}")
-            except Exception as exc:
-                self._last_error = str(exc)
-                return ServiceStatus.error("db", self._last_error)
+        health = self._database.start()
+        if not health.ok:
+            return ServiceStatus.error("db", health.detail)
+        try:
+            self._database.ensure_default_user()
+        except Exception as exc:
+            return ServiceStatus.error("db", f"default user: {exc}")
+        return ServiceStatus.ok("db", health.detail)
 
     def health(self) -> ServiceStatus:
-        with self._lock:
-            if self._connection is None:
-                return ServiceStatus.error(
-                    "db",
-                    self._last_error or "database is not connected",
-                )
-            try:
-                self._connection.execute("SELECT 1").fetchone()
-                return ServiceStatus.ok("db", f"sqlite at {self.path}")
-            except Exception as exc:
-                self._last_error = str(exc)
-                return ServiceStatus.error("db", self._last_error)
+        health = self._database.health()
+        if health.ok:
+            return ServiceStatus.ok("db", health.detail)
+        return ServiceStatus.error("db", health.detail)
 
     def stop(self) -> None:
-        with self._lock:
-            if self._connection is not None:
-                self._connection.close()
-                self._connection = None
+        self._database.close()
+
+    @property
+    def connection(self):
+        return self._database.connection
+
+    @property
+    def data(self) -> FlowDatabase:
+        return self._database
+
+    def backup_now(self) -> Path:
+        return self._database.backup_now()

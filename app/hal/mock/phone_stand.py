@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import replace
+from datetime import datetime, timezone
 
 from bus import topics
 from hal.contracts import DeviceStatus, EventPublisher, PhoneState
@@ -124,7 +125,11 @@ class MockPhoneStand(MockDevice):
                 self._last_published = current
             self._published += 1
             try:
-                self.publisher.publish(topics.PHONE_CHANGED, current.to_dict())
+                payload = current.to_dict()
+                payload["at"] = datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ).replace("+00:00", "Z")
+                self.publisher.publish(topics.PHONE_CHANGED, payload)
             except Exception:  # pragma: no cover - event bus boundary
                 logger.exception("failed to publish phone.changed")
 

@@ -8,6 +8,10 @@ application must be declared here. Client/server message types live in
 PHONE_CHANGED = "phone.changed"
 
 SPEECH_FINAL = "speech.final"
+SPEECH_PARTIAL = "speech.partial"
+SPEECH_STARTED = "speech.started"
+SPEECH_EMPTY = "speech.empty"
+SPEECH_BARGE_IN = "speech.barge_in"
 INTENT_PARSED = "intent.parsed"
 CHANNEL_ENTER = "channel.enter"
 CHANNEL_EXIT = "channel.exit"
@@ -26,6 +30,10 @@ ERROR = "error"
 ALL_TOPICS = (
     PHONE_CHANGED,
     SPEECH_FINAL,
+    SPEECH_PARTIAL,
+    SPEECH_STARTED,
+    SPEECH_EMPTY,
+    SPEECH_BARGE_IN,
     INTENT_PARSED,
     CHANNEL_ENTER,
     CHANNEL_EXIT,

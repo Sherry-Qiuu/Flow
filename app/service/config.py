@@ -12,6 +12,7 @@ import yaml
 
 from gesture.config import GestureSettings
 from planner.timeutil import tz_for
+from voice.config import SpeechSettings
 
 _ENV_KEY = re.compile(
     r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$"
@@ -25,6 +26,8 @@ _ALIASES = {
     "FLOW_TIMEZONE": "app.timezone",
     "FLOW_DB": "data.db_path",
     "FLOW_DATA_DIR": "data.dir",
+    "FLOW_BACKUP_DIR": "data.backup_dir",
+    "FLOW_BACKUP_KEEP": "data.backup_keep",
     "FLOW_LOG_LEVEL": "logging.level",
     "FLOW_LOG_JSON": "logging.json",
 }
@@ -41,6 +44,9 @@ _DEFAULTS: dict[str, Any] = {
     "data": {
         "dir": "data",
         "db_path": "data/flow.db",
+        "backup_dir": "data/backup",
+        "backup_keep": 7,
+        "backup_hour": 3,
     },
     "hal": {
         "backend": "auto",
@@ -57,6 +63,20 @@ _DEFAULTS: dict[str, Any] = {
         "debounce_frames": 5,
         "min_votes": 2,
         "poll_ms": 50,
+    },
+    "voice": {
+        "enabled": True,
+        "sample_rate": 16000,
+        "pre_roll_s": 3.0,
+        "silence_ms": 300,
+        "vad_threshold": 0.018,
+        "min_speech_ms": 120,
+        "partial_interval_ms": 700,
+        "max_utterance_s": 30,
+        "empty_prompt_after": 3,
+        "barge_in": True,
+        "barge_in_threshold": 0.03,
+        "debug_audio": False,
     },
     "logging": {
         "level": "INFO",
@@ -83,6 +103,9 @@ class AppSettings:
 class DataSettings:
     dir: Path = Path("data")
     db_path: Path = Path("data/flow.db")
+    backup_dir: Path = Path("data/backup")
+    backup_keep: int = 7
+    backup_hour: int = 3
 
 
 @dataclass(frozen=True)
@@ -116,6 +139,7 @@ class Settings:
         default_factory=SchedulerSettings
     )
     gesture: GestureSettings = field(default_factory=GestureSettings)
+    voice: SpeechSettings = field(default_factory=SpeechSettings)
     logging: LoggingSettings = field(default_factory=LoggingSettings)
     ui: UiSettings = field(default_factory=UiSettings)
     config_path: Path | None = None
@@ -135,6 +159,9 @@ class Settings:
             "data": {
                 "dir": str(self.data.dir),
                 "db_path": str(self.data.db_path),
+                "backup_dir": str(self.data.backup_dir),
+                "backup_keep": self.data.backup_keep,
+                "backup_hour": self.data.backup_hour,
             },
             "hal": {"backend": self.hal.backend},
             "scheduler": {"enabled": self.scheduler.enabled},
@@ -144,6 +171,12 @@ class Settings:
                 "leave_cm": self.gesture.leave_cm,
                 "leave_hold_s": self.gesture.leave_hold_s,
                 "cooldown_s": self.gesture.cooldown_s,
+            },
+            "voice": {
+                "enabled": self.voice.enabled,
+                "sample_rate": self.voice.sample_rate,
+                "silence_ms": self.voice.silence_ms,
+                "max_utterance_s": self.voice.max_utterance_s,
             },
             "logging": {
                 "level": self.logging.level,
@@ -205,6 +238,14 @@ def load_settings(
         raw["data"]["db_path"] = str(
             Path(str(raw["data"]["dir"])) / "flow.db"
         )
+    if (
+        "FLOW_DATA_DIR" in values
+        and "FLOW_BACKUP_DIR" not in values
+        and "FLOW_DATA__BACKUP_DIR" not in values
+    ):
+        raw["data"]["backup_dir"] = str(
+            Path(str(raw["data"]["dir"])) / "backup"
+        )
 
     app = AppSettings(
         name=str(raw["app"]["name"]),
@@ -217,6 +258,9 @@ def load_settings(
     data = DataSettings(
         dir=_resolve_path(base_dir, raw["data"]["dir"]),
         db_path=_resolve_path(base_dir, raw["data"]["db_path"]),
+        backup_dir=_resolve_path(base_dir, raw["data"]["backup_dir"]),
+        backup_keep=int(raw["data"]["backup_keep"]),
+        backup_hour=int(raw["data"]["backup_hour"]),
     )
     hal = HalSettings(backend=str(raw["hal"]["backend"]).lower())
     scheduler = SchedulerSettings(
@@ -231,6 +275,20 @@ def load_settings(
         debounce_frames=int(raw["gesture"]["debounce_frames"]),
         min_votes=int(raw["gesture"]["min_votes"]),
         poll_ms=int(raw["gesture"]["poll_ms"]),
+    )
+    voice = SpeechSettings(
+        enabled=bool(raw["voice"]["enabled"]),
+        sample_rate=int(raw["voice"]["sample_rate"]),
+        pre_roll_s=float(raw["voice"]["pre_roll_s"]),
+        silence_ms=int(raw["voice"]["silence_ms"]),
+        vad_threshold=float(raw["voice"]["vad_threshold"]),
+        min_speech_ms=int(raw["voice"]["min_speech_ms"]),
+        partial_interval_ms=int(raw["voice"]["partial_interval_ms"]),
+        max_utterance_s=int(raw["voice"]["max_utterance_s"]),
+        empty_prompt_after=int(raw["voice"]["empty_prompt_after"]),
+        barge_in=bool(raw["voice"]["barge_in"]),
+        barge_in_threshold=float(raw["voice"]["barge_in_threshold"]),
+        debug_audio=bool(raw["voice"]["debug_audio"]),
     )
     logging_settings = LoggingSettings(
         level=str(raw["logging"]["level"]).upper(),
@@ -247,6 +305,7 @@ def load_settings(
         hal=hal,
         scheduler=scheduler,
         gesture=gesture,
+        voice=voice,
         logging=logging_settings,
         ui=ui,
         config_path=config_path,

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Clock } from "../components/Clock";
 import { FaceExpression } from "../components/FaceExpression";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { PhoneBadge } from "../components/PhoneBadge";
 
 export function Idle({ state }: PageProps) {
   return (
@@ -10,6 +11,7 @@ export function Idle({ state }: PageProps) {
       footer="说“开始”，或挥一下手"
     >
       <Clock clock={state.clock} date={state.date} compact />
+      <PhoneBadge phone={state.phone} />
       <div className="idle__face">
         <FaceExpression mood={state.face} size={280} />
       </div>

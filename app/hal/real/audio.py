@@ -234,6 +234,11 @@ class RealAudioOut(AudioOut):
     def set_volume(self, value: float) -> None:
         self._volume = max(0.0, min(1.0, float(value)))
 
+    def stop(self) -> None:
+        # RawOutputStream.write() is blocking; a future player thread can
+        # cancel it. The speech pipeline still drops the TTS turn.
+        return None
+
     def play(self, path_or_pcm: str | Path | bytes) -> bool:
         if not self._opened:
             status = self.open()

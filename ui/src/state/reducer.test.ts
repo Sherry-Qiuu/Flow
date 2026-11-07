@@ -134,6 +134,64 @@ describe("flow reducer", () => {
     expect(state.toast).toBe("网络断开");
   });
 
+  it("opens and closes a T04 channel", () => {
+    let state = withMessage(makeInitialState(at), "channel.enter", {
+      channel: "focus",
+      title: "专注计时",
+      snapshot: {
+        channel: "focus",
+        title: "专注计时",
+        data: { remaining_seconds: 300, running: true },
+        hints: ["说“暂停”", "说“返回”"],
+      },
+    });
+    expect(state.channelActive).toBe(true);
+    expect(state.channel).toBe("focus");
+    expect(state.channelTitle).toBe("专注计时");
+    expect(state.channelData.remaining_seconds).toBe(300);
+    expect(state.channelHints).toHaveLength(2);
+    expect(state.phase).toBe("idle");
+
+    state = withMessage(state, "channel.exit", {});
+    expect(state.channelActive).toBe(false);
+    expect(state.channel).toBe("clock");
+    expect(state.channelData).toEqual({});
+  });
+
+  it("restores an active channel from state.sync", () => {
+    const state = withMessage(makeInitialState(at), "state.sync", {
+      phase: "idle",
+      channel_state: {
+        channel: "tasks",
+        title: "任务清单",
+        data: { count: 2, items: [{ title: "写引言" }] },
+        hints: ["说“完成第一条”"],
+      },
+    });
+    expect(state.channelActive).toBe(true);
+    expect(state.channel).toBe("tasks");
+    expect(state.channelTitle).toBe("任务清单");
+    expect(state.channelData.count).toBe(2);
+  });
+
+  it("updates the active focus channel on focus.state", () => {
+    let state = withMessage(makeInitialState(at), "channel.enter", {
+      channel: "focus",
+      title: "专注计时",
+      snapshot: {
+        channel: "focus",
+        data: { remaining_seconds: 600, running: false },
+        hints: ["说“开始”"],
+      },
+    });
+    state = withMessage(state, "focus.state", {
+      remaining_seconds: 540,
+      running: true,
+    });
+    expect(state.channelData.remaining_seconds).toBe(540);
+    expect(state.channelData.running).toBe(true);
+  });
+
   it("ignores stale sequenced events but accepts a fresh sync", () => {
     const first = withMessage(
       makeInitialState(at),

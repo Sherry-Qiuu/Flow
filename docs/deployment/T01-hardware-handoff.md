@@ -201,14 +201,16 @@ FLOW_PHONE_POLL_MS=100
 | T02 HAL/自检 | 已交付（mock 全绿，真实待上机） | 真实驱动需在 Pi 上验证 |
 | T03 后端/WS/健康检查 | 已交付 | scheduler 目前 `disabled`；gesture 子系统已接入 |
 | T05 正式 UI | 已交付 | React + Vite + TS + Tailwind + Motion；720 画布、8 表情、自动重连 |
-| T09 手势真驱动 | 核心已交付 | PAJ7620 驱动 + detector/presence + `gesture.detected`；T04 路由和真实 ToF 待接 |
-| T04 STOP/工具路由 | 未完成 | 按钮可先接、可测通断；软件后续接 |
+| T09 手势真驱动 | 核心已交付 | PAJ7620 驱动 + detector/presence + `gesture.detected`；T04 路由已接，真实 ToF 待接 |
+| T04 STOP/工具路由 | 已交付 | 6 通道状态机/意图路由已完成；STOP 物理按钮待硬件验证 |
+| T06 语音管线 | 核心已交付 | 采集/VAD/ASR 降级/打断已完成；真实 ASR 模型/云账号待配 |
+| T10 数据层 | 已交付 | SQLite 14 表、迁移、DAO、备份/恢复 |
+| T20 手机在位/充电契约 | 已交付（mock） | T02 GPIO/INA219 + T20 会话落库/角标；真机 20 次充电验收待做 |
 | T16 振动反馈 | 未完成 | 马达可先装、可测；软件后续接 |
-| T20 手机在位/充电契约 | 未完成 | T02 已提供 GPIO/INA219 读取；T20 再接业务 |
 | T15 提醒调度 | 未完成 | 健康检查里显示 `disabled` 是正常 |
 
-> 交接时不要把“硬件装好”说成“功能全部完成”。T01/T02 验收和后续 T04/T09/T16/T20
-> 是分开的；本文第 6 节按当前可验收范围列测试。
+> 交接时不要把“硬件装好”说成“功能全部完成”。T01/T02 验收和 T16/STOP 硬件
+> 仍需上机；T04/T06/T09/T10/T20 的软件部分已交付，真机参数/模型仍需联调。
 
 ---
 
@@ -332,9 +334,9 @@ systemctl status flow-backend --no-pager
 curl -s http://127.0.0.1:8000/healthz | jq
 ```
 
-期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/gesture/websocket`。
+期望：HTTP 200，`status` 为 `ok`，`subsystems` 有 `db/hal/scheduler/gesture/phone/voice/websocket`。
 `scheduler` 显示 `disabled` 是正常，T15 还没做；没有接 PAJ7620 时 `gesture` 也显示
-`disabled`，不影响后端启动。
+`disabled`，没配 ASR 时 `voice` 为 `disabled`，都不影响后端启动。
 
 WebSocket：
 
@@ -374,14 +376,14 @@ sudo flow-diag --with-selftest
 ## 6. 测试矩阵与证据
 
 > 在表里填 `PASS/FAIL/BLOCKED` 和证据文件名。T01/T02 为本次交接必须通过项；
-> T09/T16/T20 只要求“硬件装好/可手动验证”，软件集成另行验收。
+> T16/T20 只要求“硬件装好/可手动验证”；T20 软件已接入，真机充电验收另行做。
 
 | ID | 测试 | 命令/操作 | 预期 | 结果 | 证据 |
 | --- | --- | --- | --- | --- | --- |
 | T01-01 | 系统启动 | 接电源/电池开机 | 90 秒内进入 Flow 界面 | | 计时视频 |
 | T01-02 | 网络/SSH | `ssh flow@flow.local` | 能登录 | | 终端截图 |
 | T01-03 | 服务状态 | `systemctl status flow-hal flow-backend flow-ui` | 三个服务 active | | 截图 |
-| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/gesture/websocket 可见 | | JSON |
+| T01-04 | 健康检查 | `curl -s :8000/healthz \| jq` | 200，db/hal/scheduler/gesture/phone/voice/websocket 可见 | | JSON |
 | T01-05 | WS | 5.4 的 Python 脚本 | 收到 `state.sync` | | 终端输出 |
 | T01-06 | 中文 | 屏幕显示 Flow UI | 无方块/截断 | | 屏幕照片 |
 | T01-07 | 分辨率 | 屏幕设置/照片 | 720×720（或 T05 设计画布） | | 照片 |

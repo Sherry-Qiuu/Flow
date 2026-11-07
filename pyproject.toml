@@ -41,12 +41,17 @@ pi = [
 package-dir = { "" = "app" }
 packages = [
     "bus",
+    "channel",
+    "channel.builtin",
+    "data",
     "gesture",
     "hal",
     "hal.mock",
     "hal.real",
+    "phone",
     "planner",
     "service",
+    "voice",
 ]
 
 [tool.setuptools.package-data]

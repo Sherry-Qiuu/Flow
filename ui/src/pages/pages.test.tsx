@@ -12,6 +12,7 @@ import { PlanReview } from "../pages/PlanReview";
 import { Resting } from "../pages/Resting";
 import { Settings } from "../pages/Settings";
 import { Thinking } from "../pages/Thinking";
+import { ChannelView } from "../pages/ChannelView";
 
 const at = new Date("2026-11-07T19:00:00+08:00");
 
@@ -91,6 +92,60 @@ describe("T05 pages", () => {
       );
       expect(html).toContain("Flow 表情");
     }
+  });
+
+  it("shows the phone stand badge on idle", () => {
+    const html = renderToStaticMarkup(
+      <Idle
+        state={state({
+          phone: { present: true, charging: true },
+        })}
+      />,
+    );
+    expect(html).toContain("手机在架 · 充电中");
+  });
+
+  it("renders the active T04 channel without clickable controls", () => {
+    const html = renderToStaticMarkup(
+      <ChannelView
+        state={state({
+          phase: "idle",
+          channel: "focus",
+          channelActive: true,
+          channelTitle: "专注计时",
+          channelData: {
+            remaining_seconds: 300,
+            running: true,
+          },
+          channelHints: ["说“暂停”", "说“返回”"],
+        })}
+      />,
+    );
+    expect(html).toContain("专注计时");
+    expect(html).toContain("05:00");
+    expect(html).toContain("正在专注");
+    expect(html).not.toMatch(/<button|<a\s/);
+  });
+
+  it("renders a task channel list", () => {
+    const html = renderToStaticMarkup(
+      <ChannelView
+        state={state({
+          phase: "idle",
+          channel: "tasks",
+          channelActive: true,
+          channelTitle: "任务清单",
+          channelData: {
+            count: 2,
+            items: [{ title: "写引言" }, { title: "列论点" }],
+          },
+          channelHints: ["说“完成第一条”"],
+        })}
+      />,
+    );
+    expect(html).toContain("任务清单");
+    expect(html).toContain("写引言");
+    expect(html).toContain("列论点");
   });
 
   it("page shell exposes a footer without interactive controls", () => {

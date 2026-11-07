@@ -21,6 +21,7 @@ class MockAudioOut(MockDevice):
         super().__init__(publisher, detail="mock speaker")
         self._volume = max(0.0, min(1.0, volume))
         self._plays: list[dict[str, Any]] = []
+        self._stops = 0
 
     @property
     def volume(self) -> float:
@@ -29,6 +30,13 @@ class MockAudioOut(MockDevice):
     @property
     def plays(self) -> tuple[dict[str, Any], ...]:
         return tuple(self._plays)
+
+    @property
+    def stops(self) -> int:
+        return self._stops
+
+    def stop(self) -> None:
+        self._stops += 1
 
     def play(self, path_or_pcm: str | Path | bytes) -> bool:
         if not self._opened:

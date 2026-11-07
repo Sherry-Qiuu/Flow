@@ -29,6 +29,7 @@ const CHANNELS: Channel[] = [
   "reminder",
   "music",
   "home",
+  "idle",
 ];
 
 export const PHASE_FACE: Record<Phase, FaceMood> = {
@@ -71,6 +72,10 @@ export function makeInitialState(now = new Date()): FlowState {
   return {
     phase: "idle",
     channel: "clock",
+    channelActive: false,
+    channelTitle: "",
+    channelData: {},
+    channelHints: [],
     face: "neutral",
     message: PHASE_MESSAGE.idle,
     clock: formatClock(now),
@@ -142,6 +147,17 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
       return applyStateSync(base, payload);
     case "ui.phase":
       return applyPhase(base, payload);
+    case "channel.enter":
+      return applyChannelEnter(base, payload);
+    case "channel.exit":
+      return {
+        ...base,
+        channelActive: false,
+        channel: "clock",
+        channelTitle: "",
+        channelData: {},
+        channelHints: [],
+      };
     case "assistant.say":
       return applyAssistant(base, payload);
     case "plan.draft":
@@ -189,12 +205,24 @@ function applyStateSync(
 ): FlowState {
   const phase = asPhase(payload.phase) ?? state.phase;
   const channel = asChannel(payload.channel) ?? state.channel;
+  const channelState = asRecord(payload.channel_state);
+  const active = asChannel(channelState.channel);
   const plan = planFrom(payload.plan) ?? state.plan;
   const step = stepFrom(payload.step) ?? state.step;
   return {
     ...state,
     phase,
-    channel,
+    channel: active ?? channel,
+    channelActive: active !== null && active !== "idle",
+    channelTitle: active && active !== "idle"
+      ? text(channelState.title, state.channelTitle)
+      : "",
+    channelData: active && active !== "idle"
+      ? asRecord(channelState.data)
+      : {},
+    channelHints: active && active !== "idle"
+      ? stringList(channelState.hints)
+      : [],
     face: PHASE_FACE[phase],
     message: text(payload.message, PHASE_MESSAGE[phase]),
     phone: phoneFrom(payload.phone, state.phone),
@@ -202,6 +230,40 @@ function applyStateSync(
     step,
     tasksCount: integer(payload.tasks_count, state.tasksCount),
     offline: false,
+  };
+}
+
+function applyChannelEnter(
+  state: FlowState,
+  payload: Record<string, unknown>,
+): FlowState {
+  const snapshot = asRecord(payload.snapshot);
+  const channel = asChannel(payload.channel) ?? asChannel(snapshot.channel);
+  if (channel === null || channel === "idle") {
+    return {
+      ...state,
+      channelActive: false,
+      channelTitle: "",
+      channelData: {},
+      channelHints: [],
+    };
+  }
+  return {
+    ...state,
+    phase: "idle",
+    channel,
+    channelActive: true,
+    channelTitle: text(
+      payload.title ?? snapshot.title,
+      channelLabel(channel),
+    ),
+    channelData: asRecord(snapshot.data),
+    channelHints: stringList(snapshot.hints),
+    face: "neutral",
+    message: text(
+      stringList(snapshot.hints)[0],
+      "说“返回”回到主页",
+    ),
   };
 }
 
@@ -259,11 +321,23 @@ function applyFocus(
   payload: Record<string, unknown>,
 ): FlowState {
   const step = stepFrom(payload) ?? state.step;
+  const remaining = integer(payload.remaining_seconds, undefined);
+  const focusChannel =
+    state.channelActive &&
+    state.channel === "focus" &&
+    remaining !== undefined;
   return {
     ...state,
     phase: "executing",
     face: "neutral",
     step,
+    channelData: focusChannel
+      ? {
+          ...state.channelData,
+          remaining_seconds: remaining,
+          running: bool(payload.running, false),
+        }
+      : state.channelData,
     message: text(payload.message, "只做眼前这一步。"),
   };
 }
@@ -377,6 +451,26 @@ export function asChannel(value: unknown): Channel | null {
   return typeof value === "string" && CHANNELS.includes(value as Channel)
     ? (value as Channel)
     : null;
+}
+
+export function channelLabel(channel: Channel): string {
+  const labels: Record<Channel, string> = {
+    clock: "时钟",
+    tasks: "任务清单",
+    plan: "计划表",
+    focus: "专注计时",
+    reminder: "提醒",
+    music: "音乐",
+    home: "主页",
+    idle: "主页",
+  };
+  return labels[channel];
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 function text(value: unknown, fallback: string): string;

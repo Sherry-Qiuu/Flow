@@ -13,6 +13,7 @@ import { PlanReview } from "./pages/PlanReview";
 import { Resting } from "./pages/Resting";
 import { Settings } from "./pages/Settings";
 import { Thinking } from "./pages/Thinking";
+import { ChannelView } from "./pages/ChannelView";
 import type { PageProps } from "./components/PageShell";
 import { FlowSocket, getWebSocketUrl } from "./ws/client";
 
@@ -60,7 +61,12 @@ export function App() {
     return () => clearTimeout(timer);
   }, [state.toast]);
 
-  const Page = PAGE_MAP[state.phase] ?? Idle;
+  const Page = state.channelActive
+    ? ChannelView
+    : PAGE_MAP[state.phase] ?? Idle;
+  const pageKey = state.channelActive
+    ? `channel-${state.channel}`
+    : state.phase;
   const reconnecting = state.connection === "connecting";
 
   return (
@@ -72,7 +78,7 @@ export function App() {
           data-testid="flow-canvas"
         >
           <AnimatePresence mode="wait">
-            <Page key={state.phase} state={state} />
+            <Page key={pageKey} state={state} />
           </AnimatePresence>
           <OfflineBadge offline={state.offline} reconnecting={reconnecting} />
           <Toast message={state.toast} />

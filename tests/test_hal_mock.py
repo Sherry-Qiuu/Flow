@@ -107,6 +107,7 @@ def test_phone_changed_event_within_300ms():
         assert elapsed < 0.3
         assert events[-1]["present"] is True
         assert events[-1]["charging"] is True
+        assert events[-1]["at"]
         assert times_current(events[-1]) > 0
 
         # Repeating the same snapshot must not spam the bus.
