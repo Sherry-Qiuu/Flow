@@ -201,3 +201,47 @@ def test_wanting_to_focus_hands_over_a_running_timer(workspace_tmp):
         assert focus["status"] == "running"
         assert focus["total_ms"] == 25 * 60 * 1000
         assert client.get("/api/system/status").json()["phase"] == "executing"
+
+
+def test_a_plain_sentence_of_tasks_becomes_a_plan(workspace_tmp):
+    """Kiosk promise: 「写论文，背50个单词」 is a task list, not gibberish."""
+    client = make_client(workspace_tmp)
+    with client:
+        intent = client.post(
+            "/api/intent",
+            json={"text": "写论文，背50个单词"},
+        ).json()["intent"]
+        assert intent["name"] == "make_plan"
+        status = client.get("/api/system/status").json()
+        assert status["tasks_count"] == 2
+        assert status["phase"] == "plan_review"
+        assert len(status["plan"]["items"]) >= 2
+
+
+def test_saying_the_same_tasks_twice_does_not_duplicate_them(workspace_tmp):
+    client = make_client(workspace_tmp)
+    with client:
+        for _ in range(2):
+            client.post("/api/intent", json={"text": "背50个单词"})
+        assert client.get("/api/system/status").json()["tasks_count"] == 1
+
+
+def test_asking_for_a_plan_is_not_itself_a_task(workspace_tmp):
+    """「帮我安排今天」 on an empty day asks back instead of inventing work."""
+    client = make_client(workspace_tmp)
+    with client:
+        with client.websocket_connect("/ws") as websocket:
+            reader = FrameReader(websocket)
+            reader.drain(0.4)
+            client.post("/api/intent", json={"text": "帮我安排今天"})
+            frames = reader.drain(1.5)
+        status = client.get("/api/system/status").json()
+        assert status["tasks_count"] == 0
+        assert status["phase"] == "idle"
+        says = [
+            frame["payload"].get("text", "")
+            for frame in frames
+            if frame["type"] == "assistant.say"
+        ]
+        assert says, "the kiosk stayed silent"
+        assert "先告诉我" in says[0]

@@ -317,10 +317,27 @@ class Runtime:
             )
 
     def _on_plan_requested(self, payload: dict[str, Any]) -> None:
-        """Build a plan from the task list when the screen asks for one."""
+        """Turn what the user said into tasks, then into a plan.
+
+        The words are the task list: 「写论文，背50个单词」 arrives here as the
+        plan request text. Extract, commit, plan from the repo. Repeating the
+        same sentence adds nothing — capture dedupes against stored titles.
+        """
         if self.plan_service is None or self.repos is None:
             return
+        text = str(payload.get("text") or "").strip()
         try:
+            if text and self.capture is not None:
+                drafts = self.capture.from_text(text, source="voice")
+                if drafts:
+                    self.capture.commit(drafts)
+            if not self._open_task_count():
+                # An empty review page is worse than asking again.
+                self.bus.publish(
+                    topics.ASSISTANT_SAY,
+                    {"text": "先告诉我今天要做什么，比如「写论文，背50个单词」"},
+                )
+                return
             self.plan_service.create_from_repo()
         except Exception:
             logger.exception("plan request failed")

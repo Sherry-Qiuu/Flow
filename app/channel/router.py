@@ -45,6 +45,41 @@ PLAN_PHRASES = (
     "规划一下",
 )
 
+# The kiosk promise is "say one sentence, get a plan", so a bare list of
+# things to do ("写论文，背50个单词") has to reach the planner instead of
+# dying as "unknown". Any of these words makes the sentence a task.
+TASK_VERBS = (
+    "写",
+    "背",
+    "复习",
+    "预习",
+    "做",
+    "读",
+    "练",
+    "刷",
+    "整理",
+    "准备",
+    "交",
+    "学",
+    "翻译",
+    "画",
+    "改",
+    "检查",
+    "跑",
+    "开会",
+    "论文",
+    "作业",
+    "单词",
+    "报告",
+    "汇报",
+    "实验",
+    "读书",
+)
+
+# ...unless it is a question, in which case guessing a task list would be
+# worse than asking again.
+QUESTION_WORDS = ("吗", "什么", "怎么", "为什么", "多久", "几点", "哪", "?")
+
 # Saying you want to focus is a request to start, not to look at the timer
 # (README: 「我要专注 25 分钟」 hands over a running timer).
 FOCUS_START_PHRASES = (
@@ -129,6 +164,15 @@ def route(text: str, *, source: str = "voice") -> Intent:
             source=source,
             args={"reply": CLARIFY_REPLY},
             confidence=0.4,
+        )
+    if not any(word in lowered for word in QUESTION_WORDS) and any(
+        word in lowered for word in TASK_VERBS
+    ):
+        return Intent(
+            name="make_plan",
+            text=normalized,
+            source=source,
+            confidence=0.6,
         )
     return Intent(name="unknown", text=normalized, source=source)
 

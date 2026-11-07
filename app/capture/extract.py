@@ -34,6 +34,24 @@ _COURSES = (
     "实验",
 )
 
+# "帮我安排今天" asks for a plan; it must not become a task called 「安排」.
+_SCHEDULE_ONLY = frozenset(
+    {
+        "安排",
+        "安排一下",
+        "帮我安排",
+        "做计划",
+        "排个计划",
+        "制定计划",
+        "规划",
+        "规划一下",
+        "计划",
+        "计划一下",
+        "日程",
+        "排一下",
+    }
+)
+
 
 @dataclass(frozen=True)
 class TaskDraft:
@@ -71,11 +89,7 @@ def extract_from_text(
     if not raw:
         return []
     moment = (now or datetime.now(TZ)).astimezone(TZ)
-    segments = [
-        segment.strip(" ，。；;")
-        for segment in re.split(r"然后|接着|；|;|。|\n", raw)
-        if segment.strip(" ，。；;")
-    ]
+    segments = _segments(raw)
     drafts = []
     for segment in segments:
         deadline = _parse_deadline(segment, moment)
@@ -87,7 +101,11 @@ def extract_from_text(
             else "normal"
         )
         title = _clean_title(segment)
-        if title:
+        # A one-character title is a fragment of the previous sentence
+        # ("写论文，明天交" -> 「交」), never something to plan.
+        if len(title) < 2:
+            continue
+        if _normalize(title) not in _SCHEDULE_ONLY:
             drafts.append(
                 TaskDraft(
                     title=title,
@@ -100,6 +118,28 @@ def extract_from_text(
                 )
             )
     return drafts
+
+
+def _segments(raw: str) -> list[str]:
+    """Split spoken text into tasks.
+
+    Spoken lists use commas as much as they use 「然后」, so a comma ends a
+    task — unless the fragment after it is only a time, which belongs to the
+    task before: 「背50个单词，明天」 is one task with a deadline.
+    """
+    parts = [
+        part.strip(" ，。；;")
+        for part in re.split(r"然后|接着|；|;|。|\n|，|,", raw)
+    ]
+    merged: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        if merged and _is_time_only(part.replace(" ", "")):
+            merged[-1] = f"{merged[-1]}{part}"
+            continue
+        merged.append(part)
+    return merged
 
 
 def dedupe_drafts(
@@ -188,6 +228,18 @@ def _parse_duration(text: str) -> int | None:
         return None
     amount = int(value.group(1))
     return amount * 60 if value.group(2) == "小时" else amount
+
+
+_TIME_WORDS = re.compile(
+    r"今天|明天|后天|今晚|上午|下午|晚上|中午|下周|周[一二三四五六日天]|"
+    r"星期[一二三四五六日天]|之前|以前|截止|点半|\d{1,2}[:：]\d{1,2}|"
+    r"\d{1,2}点|\d{1,2}"
+)
+
+
+def _is_time_only(text: str) -> bool:
+    """True when nothing is left once the time is stripped ("明天下午三点")."""
+    return bool(text) and not _TIME_WORDS.sub("", text).strip()
 
 
 def _clean_title(text: str) -> str:
