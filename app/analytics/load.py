@@ -11,10 +11,9 @@ from typing import Any
 from analytics.distraction import DistractionService
 from bus import topics
 from data.repositories import Repositories
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
 REST_CATALOG = (
     {"id": "stretch", "title": "站起来伸个懒腰", "minutes": 3},
     {"id": "walk", "title": "走动一下，喝口水", "minutes": 5},
@@ -38,7 +37,7 @@ class LoadService:
         self.distractions = distractions
         self.publisher = publisher
         self.say = say
-        self.now_fn = now_fn or (lambda: datetime.now(TZ))
+        self.now_fn = now_fn or (lambda: datetime.now(default_tz()))
         self._suppressed_until: datetime | None = None
         self._last_level = 0
         self._stop = threading.Event()
@@ -62,12 +61,12 @@ class LoadService:
 
     def score(self) -> dict[str, Any]:
         now = self.now_fn()
-        today = now.astimezone(TZ).date()
+        today = now.astimezone(default_tz()).date()
         sessions = self.repos.focus_sessions.list(limit=100)
         focus_minutes = 0
         for row in sessions:
             started = _parse(row.get("started_at"))
-            if started.astimezone(TZ).date() != today:
+            if started.astimezone(default_tz()).date() != today:
                 continue
             ended = _parse(row.get("ended_at")) or now
             focus_minutes += max(
@@ -83,7 +82,7 @@ class LoadService:
             100,
             int(focus_minutes / 90 * 40)
             + distraction_count * 4
-            + (15 if now.astimezone(TZ).hour >= 23 else 0),
+            + (15 if now.astimezone(default_tz()).hour >= 23 else 0),
         )
         if score >= 70:
             level = 2
@@ -149,6 +148,6 @@ class LoadService:
 
 def _parse(value: str | None) -> datetime:
     if not value:
-        return datetime.now(TZ)
+        return datetime.now(default_tz())
     parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=TZ)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=default_tz())

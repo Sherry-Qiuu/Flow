@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from bus.event_bus import EventBus
 from hal.factory import Hal
+from planner.timeutil import configure
 from service.api import (
     install_exception_handlers,
     placeholder_html,
@@ -52,6 +53,9 @@ def create_app(
             "app.single_worker must stay true; the event bus, channel "
             "machine and scheduler are in-process"
         )
+    # Apply FLOW_TIMEZONE before anything reads a clock; a dozen modules ask
+    # for the configured zone at call time instead of freezing one at import.
+    configure(resolved.app.timezone)
     runtime = Runtime(resolved, event_bus, hal)
 
     @asynccontextmanager

@@ -8,9 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from planner.timeutil import tz_for
-
-TZ = tz_for("Asia/Shanghai")
+from planner.timeutil import default_tz
 
 
 @dataclass

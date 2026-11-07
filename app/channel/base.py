@@ -9,9 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from data.repositories import Repositories
-from planner.timeutil import tz_for
-
-DISPLAY_TZ = tz_for("Asia/Shanghai")
+from planner.timeutil import default_tz
 
 
 @dataclass(frozen=True)
@@ -47,7 +45,7 @@ class Action:
 class ChannelContext:
     user_id: str = "u_default"
     repos: Repositories | None = None
-    now: Callable[[], datetime] = lambda: datetime.now(DISPLAY_TZ)
+    now: Callable[[], datetime] = lambda: datetime.now(default_tz())
     publish: Callable[[str, dict[str, Any]], None] | None = None
     settings: dict[str, Any] = field(default_factory=dict)
     # The focus channel delegates timing to FocusService so the kiosk gets

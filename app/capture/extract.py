@@ -7,9 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from typing import Any
 
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
-TZ = tz_for("Asia/Shanghai")
 _WEEKDAYS = {
     "一": 0,
     "二": 1,
@@ -88,7 +87,7 @@ def extract_from_text(
     raw = " ".join(str(text or "").strip().split())
     if not raw:
         return []
-    moment = (now or datetime.now(TZ)).astimezone(TZ)
+    moment = (now or datetime.now(default_tz())).astimezone(default_tz())
     segments = _segments(raw)
     drafts = []
     for segment in segments:
@@ -204,7 +203,7 @@ def _parse_deadline(text: str, now: datetime) -> datetime | None:
     if day is None:
         return None
     clock = _parse_clock(text)
-    return datetime.combine(day, clock, tzinfo=TZ)
+    return datetime.combine(day, clock, tzinfo=default_tz())
 
 
 def _parse_clock(text: str) -> time:

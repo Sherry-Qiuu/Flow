@@ -11,10 +11,9 @@ from typing import Any, Callable
 
 from bus import topics
 from data.repositories import PhoneSessionRepository
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz, tz_for
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
 DEFAULT_MINUTES = {"study": 15, "leisure": 10}
 
 
@@ -61,7 +60,7 @@ class PhoneContractService:
         self.repo = repo
         self.publisher = publisher
         self.say = say
-        self.now_fn = now_fn or (lambda: datetime.now(TZ))
+        self.now_fn = now_fn or (lambda: datetime.now(default_tz()))
         self.subscriber = subscriber
         self.active: PhoneContract | None = None
         self._stop = threading.Event()
@@ -108,7 +107,7 @@ class PhoneContractService:
         purpose = "study" if purpose == "study" else "leisure"
         value = int(minutes or DEFAULT_MINUTES[purpose])
         value = max(1, min(180, value))
-        now = self.now_fn().astimezone(TZ)
+        now = self.now_fn().astimezone(default_tz())
         session_id = self.repo.start(
             purpose=purpose,
             planned_minutes=value,
@@ -141,7 +140,7 @@ class PhoneContractService:
         contract = self.active
         if contract is None:
             return False
-        now = self.now_fn().astimezone(TZ)
+        now = self.now_fn().astimezone(default_tz())
         returned_on_time = now <= contract.ends_at
         self.repo.finish(
             contract.session_id,
@@ -190,7 +189,7 @@ class PhoneContractService:
         contract = self.active
         if contract is None:
             return
-        moment = (now or self.now_fn()).astimezone(TZ)
+        moment = (now or self.now_fn()).astimezone(default_tz())
         if contract.status == "overdue":
             return
         if moment >= contract.ends_at and not contract.reminded:
@@ -225,7 +224,7 @@ class PhoneContractService:
         try:
             started = datetime.fromisoformat(
                 str(open_session["started_at"]).replace("Z", "+00:00")
-            ).astimezone(TZ)
+            ).astimezone(default_tz())
             minutes = int(open_session.get("planned_minutes") or 15)
             self.active = PhoneContract(
                 session_id=str(open_session["id"]),

@@ -16,9 +16,7 @@ from planner.models import (
     Task,
     day_bounds,
 )
-from planner.timeutil import parse_hhmm, tz_for
-
-DISPLAY_TZ = tz_for("Asia/Shanghai")
+from planner.timeutil import default_tz, parse_hhmm
 
 
 def task_to_row(task: Task, user_id: str) -> dict[str, Any]:
@@ -184,9 +182,9 @@ def plan_from_rows(plan_row: Any, item_rows: list[Any]) -> PlanDraft:
 
 def _to_utc(value: datetime | date) -> str:
     if isinstance(value, date) and not isinstance(value, datetime):
-        value = datetime.combine(value, time(23, 59), tzinfo=DISPLAY_TZ)
+        value = datetime.combine(value, time(23, 59), tzinfo=default_tz())
     if value.tzinfo is None:
-        value = value.replace(tzinfo=DISPLAY_TZ)
+        value = value.replace(tzinfo=default_tz())
     return value.astimezone(timezone.utc).isoformat(
         timespec="seconds"
     ).replace("+00:00", "Z")
@@ -198,11 +196,11 @@ def _from_utc(value: str | None) -> datetime | None:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(DISPLAY_TZ)
+    return parsed.astimezone(default_tz())
 
 
 def _local_clock_to_utc(day: date, clock: str) -> str:
-    local = datetime.combine(day, parse_hhmm(clock), tzinfo=DISPLAY_TZ)
+    local = datetime.combine(day, parse_hhmm(clock), tzinfo=default_tz())
     return local.astimezone(timezone.utc).isoformat(
         timespec="seconds"
     ).replace("+00:00", "Z")
@@ -212,7 +210,7 @@ def _utc_to_local_clock(value: str) -> str:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(DISPLAY_TZ).strftime("%H:%M")
+    return parsed.astimezone(default_tz()).strftime("%H:%M")
 
 
 def _utc_now() -> str:
@@ -222,7 +220,7 @@ def _utc_now() -> str:
 
 
 __all__ = [
-    "DISPLAY_TZ",
+    "default_tz",
     "day_bounds",
     "plan_from_rows",
     "plan_item_to_row",

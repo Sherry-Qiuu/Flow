@@ -10,11 +10,9 @@ from typing import Any
 from analytics.events import ALLOWED
 from bus import topics
 from data.repositories import Repositories
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
-
 
 class AnalyticsService:
     def __init__(

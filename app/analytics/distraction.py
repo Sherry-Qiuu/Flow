@@ -9,11 +9,9 @@ from typing import Any
 
 from bus import topics
 from data.repositories import Repositories
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
-
 FORBIDDEN = ("又", "竟然", "居然", "拖延", "懒", "失败", "落后", "欠账")
 
 
@@ -61,7 +59,7 @@ class DistractionService:
         contexts = Counter()
         total_minutes = 0
         for row in rows:
-            created = _parse(row.get("created_at")).astimezone(TZ)
+            created = _parse(row.get("created_at")).astimezone(default_tz())
             hours[created.hour] += 1
             contexts[row.get("context") or "不清楚"] += 1
             total_minutes += int(row.get("minutes") or 0)

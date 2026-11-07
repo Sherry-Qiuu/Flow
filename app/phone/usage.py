@@ -8,11 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz
 
 logger = logging.getLogger(__name__)
-TZ = tz_for("Asia/Shanghai")
-
 
 class UsageService:
     def __init__(
@@ -63,7 +61,7 @@ class UsageService:
             **clean,
         }
         state["enabled"] = True
-        state["updated_at"] = datetime.now(TZ).isoformat(timespec="seconds")
+        state["updated_at"] = datetime.now(default_tz()).isoformat(timespec="seconds")
         self._save(state)
         return {
             "accepted": True,

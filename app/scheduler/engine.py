@@ -10,8 +10,8 @@ from typing import Any, Callable
 
 from bus import topics
 from data.repositories import ReminderRepository
-from planner.timeutil import tz_for
-from scheduler.model import ReminderSpec, TZ, parse_reminder_text
+from planner.timeutil import default_tz, tz_for
+from scheduler.model import ReminderSpec, parse_reminder_text
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class ReminderScheduler:
         self.repo = repo
         self.publisher = publisher
         self.say = say
-        self.now_fn = now_fn or (lambda: datetime.now(TZ))
+        self.now_fn = now_fn or (lambda: datetime.now(default_tz()))
         self.poll_s = max(0.1, poll_s)
         self.catchup_hours = catchup_hours
         self._stop = threading.Event()
@@ -140,11 +140,11 @@ class ReminderScheduler:
         return self.create(spec)
 
     def upcoming(self, hours: int = 24) -> list[dict[str, Any]]:
-        now = self.now_fn().astimezone(TZ).isoformat()
+        now = self.now_fn().astimezone(default_tz()).isoformat()
         return self.repo.upcoming(now, hours)
 
     def tick(self, now: datetime | None = None) -> list[dict[str, Any]]:
-        moment = (now or self.now_fn()).astimezone(TZ)
+        moment = (now or self.now_fn()).astimezone(default_tz())
         now_utc = moment.astimezone(tz_for("UTC")).isoformat(
             timespec="seconds"
         ).replace("+00:00", "Z")
@@ -195,7 +195,7 @@ class ReminderScheduler:
         return True
 
     def _catch_up(self) -> None:
-        now = self.now_fn().astimezone(TZ)
+        now = self.now_fn().astimezone(default_tz())
         cutoff = now - timedelta(hours=self.catchup_hours)
         missed = []
         for row in self.repo.list_all(enabled_only=True):
@@ -204,7 +204,7 @@ class ReminderScheduler:
                 continue
             parsed = datetime.fromisoformat(
                 str(next_fire).replace("Z", "+00:00")
-            ).astimezone(TZ)
+            ).astimezone(default_tz())
             if parsed < cutoff:
                 missed.append(row)
             elif parsed <= now:

@@ -13,7 +13,7 @@ from focus.service import FocusService
 from planner.models import PlanDraft, PlanItem, SubTask, Task
 from planner.timeutil import tz_for
 from plan.service import PlanService, conflicts
-from scheduler.model import TZ
+from planner.timeutil import default_tz
 
 
 def open_db(root: Path) -> FlowDatabase:
@@ -90,7 +90,7 @@ def test_focus_advances_and_recovers(workspace_tmp):
     service = FocusService(
         repos,
         store_path=store_path,
-        now_fn=lambda: datetime(2026, 11, 7, 19, 0, tzinfo=TZ),
+        now_fn=lambda: datetime(2026, 11, 7, 19, 0, tzinfo=default_tz()),
     )
     service.start()
     try:
@@ -120,7 +120,7 @@ def test_focus_recovers_saved_state(workspace_tmp):
     repos = repositories(database.connection, "u_a")
     repos.plans.save(make_draft("p_recover"))
     store_path = workspace_tmp / f"focus-recover-{uuid.uuid4().hex}.json"
-    now = datetime(2026, 11, 7, 19, 0, tzinfo=TZ)
+    now = datetime(2026, 11, 7, 19, 0, tzinfo=default_tz())
     first = FocusService(
         repos,
         store_path=store_path,

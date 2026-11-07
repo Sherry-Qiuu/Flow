@@ -9,8 +9,9 @@ from typing import Any
 from capture.extract import _parse_deadline, extract_from_text
 from channel.router import route
 from dialogue.actions import DialogueAction
-from dialogue.context import DialogueContext, TZ
+from dialogue.context import DialogueContext
 from dialogue.tools import TOOL_NAMES
+from planner.timeutil import default_tz
 
 DESTRUCTIVE = ("删除", "删掉", "清空", "覆盖", "重置")
 YES = ("确认", "是", "好", "对", "可以", "删除")
@@ -20,7 +21,7 @@ NO = ("取消", "不", "算了", "别")
 class Dialogue:
     def __init__(self, *, now_fn=None) -> None:
         self.context = DialogueContext()
-        self.now_fn = now_fn or (lambda: datetime.now(TZ))
+        self.now_fn = now_fn or (lambda: datetime.now(default_tz()))
         self._last_actions: list[DialogueAction] = []
 
     def turn(

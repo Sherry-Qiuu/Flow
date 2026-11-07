@@ -7,9 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 from typing import Any
 
-from planner.timeutil import tz_for
+from planner.timeutil import default_tz, tz_for
 
-TZ = tz_for("Asia/Shanghai")
 KINDS = ("at", "daily", "weekly", "every", "event")
 WEEKDAYS = {"一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "日": 6,
             "天": 6}
@@ -71,20 +70,20 @@ class ReminderSpec:
         last_fired: datetime | None = None,
     ) -> str | None:
         """Return UTC ISO next fire time, or None for one-shot/event."""
-        local = now.astimezone(TZ)
+        local = now.astimezone(default_tz())
         if self.kind == "at":
             target = _parse_local(self.at)
             return None if target <= local else _utc(target)
         if self.kind == "daily":
             parsed = _parse_clock(self.at)
-            target = datetime.combine(local.date(), parsed, tzinfo=TZ)
+            target = datetime.combine(local.date(), parsed, tzinfo=default_tz())
             if target <= local:
                 target += timedelta(days=1)
             return _utc(target)
         if self.kind == "weekly":
             parsed = _parse_clock(self.at)
             days = (self.weekday - local.weekday()) % 7
-            target = datetime.combine(local.date(), parsed, tzinfo=TZ)
+            target = datetime.combine(local.date(), parsed, tzinfo=default_tz())
             target += timedelta(days=days)
             if target <= local:
                 target += timedelta(days=7)
@@ -92,7 +91,7 @@ class ReminderSpec:
         if self.kind == "every":
             base = last_fired or local
             target = base + timedelta(minutes=self.minutes)
-            return _utc(target.astimezone(TZ))
+            return _utc(target.astimezone(default_tz()))
         return None
 
 
@@ -103,7 +102,7 @@ def parse_reminder_text(
     raw = " ".join(str(text or "").strip().split())
     if not raw:
         raise ValueError("empty reminder text")
-    moment = (now or datetime.now(TZ)).astimezone(TZ)
+    moment = (now or datetime.now(default_tz())).astimezone(default_tz())
     template = raw
     for prefix in ("提醒我", "提醒", "记得"):
         if prefix in template:
@@ -154,7 +153,7 @@ def parse_reminder_text(
         target = datetime.combine(
             moment.date(),
             time(hour, minute),
-            tzinfo=TZ,
+            tzinfo=default_tz(),
         )
         if target <= moment:
             target += timedelta(days=1)
@@ -169,8 +168,8 @@ def parse_reminder_text(
 def _parse_local(value: str) -> datetime:
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=TZ)
-    return parsed.astimezone(TZ)
+        parsed = parsed.replace(tzinfo=default_tz())
+    return parsed.astimezone(default_tz())
 
 
 def _parse_clock(value: str) -> time:

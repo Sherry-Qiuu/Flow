@@ -14,6 +14,14 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 _CHINA_ZONES = {"asia/shanghai", "prc", "etc/gmt-8"}
 _HHMM = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$")
 
+# ``FLOW_TIMEZONE`` used to be validated and then ignored: a dozen modules
+# froze ``Asia/Shanghai`` into a module constant at import time, so changing
+# the config moved the clock on two services and nowhere else. Modules now ask
+# for ``default_tz()`` at call time, and ``configure()`` is called once from
+# ``create_app`` with the resolved setting.
+_DEFAULT_NAME = "Asia/Shanghai"
+_DEFAULT: tzinfo | None = None
+
 
 def tz_for(name: str) -> tzinfo:
     key = (name or "Asia/Shanghai").strip()
@@ -36,6 +44,25 @@ def _has_zone(key: str) -> bool:
         return True
     except ZoneInfoNotFoundError:
         return False
+
+
+def configure(name: str | None = None) -> tzinfo:
+    """Set the process-wide display zone from ``app.timezone``."""
+    global _DEFAULT_NAME, _DEFAULT
+    _DEFAULT_NAME = (name or "Asia/Shanghai").strip() or "Asia/Shanghai"
+    _DEFAULT = tz_for(_DEFAULT_NAME)
+    return _DEFAULT
+
+
+def default_tz() -> tzinfo:
+    global _DEFAULT
+    if _DEFAULT is None:
+        _DEFAULT = tz_for(_DEFAULT_NAME)
+    return _DEFAULT
+
+
+def default_tz_name() -> str:
+    return _DEFAULT_NAME
 
 
 def parse_hhmm(value: str) -> time:

@@ -119,3 +119,41 @@ def test_data_settings_coerces_string_paths():
     assert isinstance(data.backup_dir, Path)
     assert data.dir / "audio" == Path("data/audio")
 
+
+def test_timezone_setting_reaches_the_modules_that_use_clocks(workspace_tmp):
+    """FLOW_TIMEZONE was validated and then ignored by a dozen modules."""
+    from hal.factory import create_hal
+    from planner.engine import RuleEngine
+    from planner.timeutil import default_tz
+    from service.app import create_app
+    from service.config import (
+        AppSettings,
+        DataSettings,
+        HalSettings,
+        LoggingSettings,
+        SchedulerSettings,
+        Settings,
+        UiSettings,
+    )
+
+    root = workspace_tmp / f"tz-{uuid.uuid4().hex}"
+    settings = Settings(
+        app=AppSettings(version="tz", timezone="UTC"),
+        data=DataSettings(
+            dir=root,
+            db_path=root / "tz.db",
+            backup_dir=root / "backup",
+        ),
+        hal=HalSettings(backend="mock"),
+        scheduler=SchedulerSettings(enabled=False),
+        logging=LoggingSettings(level="CRITICAL"),
+        ui=UiSettings(size="720x720"),
+    )
+    app = create_app(settings, hal=create_hal("mock"))
+    try:
+        assert default_tz().utcoffset(None).total_seconds() == 0
+        assert RuleEngine().prefs.timezone == "UTC"
+    finally:
+        from planner.timeutil import configure
+
+        configure("Asia/Shanghai")
