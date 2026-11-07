@@ -38,20 +38,41 @@ class RealDisplay(Display):
         paths = sorted(glob.glob("/sys/class/backlight/*/brightness"))
         return Path(paths[0]) if paths else None
 
+    def _display_connected(self) -> bool:
+        for status_path in glob.glob("/sys/class/drm/card*-*/status"):
+            try:
+                state = Path(status_path).read_text().strip().lower()
+                if state == "connected":
+                    return True
+            except OSError:
+                continue
+        return Path("/dev/fb0").exists()
+
     def probe(self) -> DeviceStatus:
         path = self._find_backlight()
-        if path is None:
-            return DeviceStatus.missing("no /sys/class/backlight device")
-        if not os.access(path, os.W_OK):
-            return DeviceStatus.error(f"backlight is not writable: {path}")
-        return DeviceStatus.ok(f"backlight {path.parent.name}")
+        if path is not None:
+            if not os.access(path, os.W_OK):
+                if self._display_connected():
+                    return DeviceStatus.ok(
+                        "display connected; backlight is read-only"
+                    )
+                return DeviceStatus.error(f"backlight is not writable: {path}")
+            return DeviceStatus.ok(f"backlight {path.parent.name}")
+        if self._display_connected():
+            return DeviceStatus.ok("HDMI/DRM display connected; no backlight")
+        return DeviceStatus.missing(
+            "no backlight or connected DRM display"
+        )
 
     def open(self) -> DeviceStatus:
         status = self.probe()
         if not status.available:
             return status
         path = self._find_backlight()
-        assert path is not None
+        if path is None:
+            self._backlight = None
+            self._opened = True
+            return status
         max_path = path.parent / "max_brightness"
         try:
             if max_path.exists():

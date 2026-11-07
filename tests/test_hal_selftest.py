@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
+from hal.daemon import main as daemon_main
 from hal.factory import create_hal
 from hal.selftest import FAIL, OK, run_selftest
 from hal.status_store import read_device_status
@@ -80,3 +82,21 @@ def test_selftest_cli_command(workspace_tmp):
     assert "SELF-TEST: 6 OK, 0 FAIL, 0 SKIP" in result.stdout
     assert "[OK" in result.stdout
     assert db_path.exists()
+
+
+def test_hal_daemon_preflight_is_non_strict(capsys):
+    code = daemon_main(
+        [
+            "--backend",
+            "mock",
+            "--no-db",
+            "--audio-seconds",
+            "0.1",
+            "--json",
+        ]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["backend"] == "mock"
+    assert payload["ok"] is True
+    assert len(payload["checks"]) == 6

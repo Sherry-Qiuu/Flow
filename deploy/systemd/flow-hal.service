@@ -1,0 +1,26 @@
+[Unit]
+Description=Flow hardware preflight and self-test
+Documentation=file://@FLOW_HOME@/DEVELOPMENT.md
+After=network.target
+Before=flow-backend.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=@FLOW_USER@
+Group=@FLOW_USER@
+WorkingDirectory=@FLOW_HOME@
+Environment=PYTHONPATH=@FLOW_HOME@/app
+Environment=FLOW_CONFIG=@FLOW_HOME@/config.yaml
+EnvironmentFile=-@FLOW_HOME@/.env
+ExecStart=@FLOW_HOME@/.venv/bin/python -m hal.daemon --audio-seconds 1.0
+TimeoutStartSec=45
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

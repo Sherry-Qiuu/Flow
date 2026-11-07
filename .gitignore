@@ -9,9 +9,12 @@ venv/
 .pytest_tmp/
 pytest-cache-files-*/
 .test_tmp/
+.pip_tmp/
 data/
 *.db
 *.sqlite3
+.env
+!.env.example
 
 # Editor / OS
 .DS_Store

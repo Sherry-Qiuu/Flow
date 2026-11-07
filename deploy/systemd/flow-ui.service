@@ -1,0 +1,37 @@
+[Unit]
+Description=Flow kiosk UI (Chromium on tty1)
+Documentation=file://@FLOW_HOME@/DEVELOPMENT.md
+After=flow-backend.service systemd-user-sessions.service
+Requires=flow-backend.service
+Conflicts=getty@tty1.service
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=@FLOW_USER@
+Group=@FLOW_USER@
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+WorkingDirectory=@FLOW_HOME@
+RuntimeDirectory=flow-ui
+RuntimeDirectoryMode=0700
+Environment=HOME=/home/@FLOW_USER@
+Environment=XDG_RUNTIME_DIR=/run/flow-ui
+Environment=DISPLAY=:0
+Environment=FLOW_UI_URL=http://127.0.0.1:8000
+Environment=PYTHONPATH=@FLOW_HOME@/app
+ExecStart=/usr/bin/xinit @FLOW_HOME@/bin/flow-kiosk -- :0 vt1 -keeptty
+Restart=always
+RestartSec=2
+TimeoutStopSec=15
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

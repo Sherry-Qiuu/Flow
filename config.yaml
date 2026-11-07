@@ -1,0 +1,27 @@
+app:
+  name: "Flow"
+  version: "0.1.0"
+  host: "127.0.0.1"
+  port: 8000
+  timezone: "Asia/Shanghai"
+  single_worker: true
+
+data:
+  dir: "data"
+  db_path: "data/flow.db"
+
+hal:
+  # mock | real | auto; FLOW_HAL overrides this value.
+  backend: "auto"
+
+scheduler:
+  # T15 is not implemented yet; the lifecycle slot is still reserved.
+  enabled: false
+
+logging:
+  level: "INFO"
+  json: true
+
+ui:
+  url: "http://127.0.0.1:8000"
+  size: "720x720"

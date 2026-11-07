@@ -1,0 +1,29 @@
+[Unit]
+Description=Flow local backend (FastAPI, single worker)
+Documentation=file://@FLOW_HOME@/DEVELOPMENT.md
+After=network-online.target flow-hal.service
+Wants=network-online.target
+Requires=flow-hal.service
+StartLimitIntervalSec=120
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=@FLOW_USER@
+Group=@FLOW_USER@
+WorkingDirectory=@FLOW_HOME@
+Environment=PYTHONPATH=@FLOW_HOME@/app
+Environment=FLOW_CONFIG=@FLOW_HOME@/config.yaml
+Environment=WEB_CONCURRENCY=1
+EnvironmentFile=-@FLOW_HOME@/.env
+ExecStart=@FLOW_HOME@/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+KillSignal=SIGINT
+KillMode=control-group
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -39,7 +39,7 @@ class RealPhoneStand(PhoneStand):
         self.present_pin = (
             present_pin
             if present_pin is not None
-            else int(os.environ.get("FLOW_PHONE_PRESENT_PIN", "17"))
+            else int(os.environ.get("FLOW_PHONE_PRESENT_PIN", "27"))
         )
         charge_pin = os.environ.get("FLOW_PHONE_CHARGE_PIN", "")
         self.charging_pin = charging_pin if charging_pin is not None else (

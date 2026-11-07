@@ -106,12 +106,15 @@
 
 - [x] 产品定义与交互原型
 - [x] **T02** 硬件抽象层 HAL、mock 设备与开机自检
+- [x] **T03** FastAPI 后端骨架、WebSocket、事件总线与健康检查
+- [x] **T01** 设备部署资产（install.sh / systemd / kiosk / flow-diag，硬件验收待上机）
 - [x] **T12** 拆解与规划规则引擎降级（LLM 主路径待接）
 - [ ] **演示版**：说话 → 拆解 → 确认 → 单步执行
 - [ ] **完整 MVP**：提醒、完成反馈、手机使用契约、多用户
 - [ ] **完整体验**：养成游戏、分心画像、周报、手机文件通道
 
-实现范围、运行命令与验收对照见 [DEVELOPMENT.md](DEVELOPMENT.md)。
+实现范围、运行命令与验收对照见 [DEVELOPMENT.md](DEVELOPMENT.md)；
+树莓派上机步骤见 [T01 硬件手册](docs/deployment/T01-hardware-runbook.md)。
 
 ## 关于
 

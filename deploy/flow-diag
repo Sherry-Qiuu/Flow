@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Collect a support bundle: journal, config, version, last sensor status.
+# Usage: sudo flow-diag [--with-selftest]
+set -euo pipefail
+
+FLOW_HOME="${FLOW_HOME:-@FLOW_HOME@}"
+WITH_SELFTEST=0
+for arg in "$@"; do
+  case "${arg}" in
+    --with-selftest) WITH_SELFTEST=1 ;;
+    -h|--help)
+      echo "usage: flow-diag [--with-selftest]"
+      exit 0
+      ;;
+    *)
+      echo "flow-diag: unknown argument ${arg}" >&2
+      exit 2
+      ;;
+  esac
+done
+
+STAMP="$(date -u +%Y%m%d-%H%M%S)"
+OUT_ROOT="${FLOW_DIAG_DIR:-${FLOW_HOME}/data/diag}"
+OUT="${OUT_ROOT}/flow-diag-${STAMP}"
+umask 077
+mkdir -p "${OUT}"
+
+{
+  echo "timestamp=${STAMP}"
+  echo "hostname=$(hostname)"
+  uname -a
+  echo
+  tr -d '\0' < /proc/device-tree/model 2>/dev/null || true
+  echo
+  cat /etc/os-release
+  echo
+  vcgencmd measure_temp 2>/dev/null || true
+  vcgencmd get_throttled 2>/dev/null || true
+  echo
+  df -h
+  echo
+  free -h
+} > "${OUT}/system.txt" 2>&1
+
+systemctl status flow-hal flow-backend flow-ui --no-pager \
+  > "${OUT}/systemd-status.txt" 2>&1 || true
+journalctl -u flow-hal -u flow-backend -u flow-ui \
+  --no-pager -n 3000 > "${OUT}/journal.txt" 2>&1 || true
+
+for file in version.json config.yaml; do
+  if [ -f "${FLOW_HOME}/${file}" ]; then
+    cp "${FLOW_HOME}/${file}" "${OUT}/${file}"
+  fi
+done
+
+{
+  echo "=== audio ==="; arecord -l 2>&1 || true; aplay -l 2>&1 || true
+  echo "=== video ==="; vcgencmd get_camera 2>&1 || true
+  libcamera-hello --list-cameras 2>&1 || true
+  echo "=== i2c ==="; i2cdetect -y 1 2>&1 || true
+  echo "=== gpio ==="; gpioinfo 2>&1 | head -n 80 || true
+  echo "=== usb ==="; lsusb 2>&1 || true
+} > "${OUT}/hardware.txt" 2>&1 || true
+
+if [ -f "${FLOW_HOME}/data/flow.db" ] && command -v sqlite3 >/dev/null 2>&1; then
+  sqlite3 -header -column "${FLOW_HOME}/data/flow.db" \
+    "SELECT device, status, detail, checked_at FROM device_status ORDER BY id DESC LIMIT 40;" \
+    > "${OUT}/device_status.txt" 2>&1 || true
+fi
+
+if [ "${WITH_SELFTEST}" = "1" ]; then
+  # Stop the backend first if it owns the camera/microphone.
+  timeout 30 "${FLOW_HOME}/.venv/bin/python" -m hal.selftest \
+    --json --no-db --audio-seconds 0.5 \
+    > "${OUT}/hal_selftest.json" 2>&1 || true
+fi
+
+{
+  echo "Flow diagnostic bundle"
+  echo "home=${FLOW_HOME}"
+  echo "stamp=${STAMP}"
+  echo
+  ls -la "${OUT}"
+} > "${OUT}/README.txt"
+
+ARCHIVE="${OUT_ROOT}/flow-diag-${STAMP}.tar.gz"
+tar -C "${OUT}" -czf "${ARCHIVE}" .
+chmod 600 "${ARCHIVE}"
+echo "${ARCHIVE}"

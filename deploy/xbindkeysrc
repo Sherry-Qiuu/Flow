@@ -1,0 +1,12 @@
+# X11 key/button grab for the kiosk. The product has no touchscreen and
+# should not be closable with browser shortcuts or a mouse context menu.
+"/bin/true"
+  Control+w
+"/bin/true"
+  Control+Shift+w
+"/bin/true"
+  Control+q
+"/bin/true"
+  Alt+F4
+"/bin/true"
+  b:3
