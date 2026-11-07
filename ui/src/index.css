@@ -319,6 +319,12 @@ body {
   gap: 0;
 }
 
+.executing-empty {
+  margin: 24px 0;
+  color: var(--flow-muted);
+  font-size: 20px;
+}
+
 .step-card {
   display: flex;
   width: 100%;

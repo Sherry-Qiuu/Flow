@@ -9,7 +9,11 @@ export function Executing({ state }: PageProps) {
       className="executing"
       footer="点按钮，或说“完成/跳过/卡住”"
     >
-      <StepCard step={state.step} />
+      {state.step ? (
+        <StepCard step={state.step} />
+      ) : (
+        <p className="executing-empty">这一步已经结束了。</p>
+      )}
       <div className="touch-actions">
         <TouchButton
           label="完成"

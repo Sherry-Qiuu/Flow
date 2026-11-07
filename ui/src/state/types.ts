@@ -83,7 +83,9 @@ export interface FlowState {
   clock: string;
   date: string;
   plan: PlanSummary | null;
-  step: StepState;
+  // Null when nothing is running: a placeholder step used to sit here and the
+  // executing page rendered it as if it were the real current step.
+  step: StepState | null;
   phone: PhoneState;
   companion: CompanionState | null;
   tasksCount: number;

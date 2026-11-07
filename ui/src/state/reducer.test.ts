@@ -84,7 +84,7 @@ describe("flow reducer", () => {
     expect(state.phase).toBe("executing");
     expect(state.offline).toBe(false);
     expect(state.phone.present).toBe(true);
-    expect(state.step.title).toBe("列出 3 个论点");
+    expect(state.step?.title).toBe("列出 3 个论点");
     expect(state.tasksCount).toBe(2);
   });
 
@@ -122,8 +122,8 @@ describe("flow reducer", () => {
       running: true,
     });
     expect(state.phase).toBe("executing");
-    expect(state.step.title).toBe("写出引言");
-    expect(state.step.remainingMs).toBe(300000);
+    expect(state.step?.title).toBe("写出引言");
+    expect(state.step?.remainingMs).toBe(300000);
 
     state = withMessage(state, "reward.event", {
       kind: "step_done",
