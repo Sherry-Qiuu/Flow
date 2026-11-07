@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flow-app"
+version = "0.1.0"
+description = "Flow local backend, hardware abstraction layer and planning engine"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+real = [
+    "Pillow>=10",
+    "sounddevice>=0.4",
+    "opencv-python>=4.8",
+    "gpiozero>=2",
+    "lgpio>=0.2",
+    "ina219>=0.3",
+]
+
+[tool.setuptools]
+package-dir = { "" = "app" }
+packages = ["bus", "hal", "hal.mock", "hal.real", "planner"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["app"]
+addopts = "-ra"
