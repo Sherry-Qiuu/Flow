@@ -403,9 +403,14 @@ class LlmEngine:
                 "已压缩为可执行的前几步"
             )
         if self.last_error:
-            draft.warnings.append(
-                "AI 拆解暂时不可用，已用内置规则完成这次规划"
-            )
+            if mode == "llm":
+                draft.warnings.append(
+                    "部分任务的 AI 拆解不可用，已用内置规则补齐"
+                )
+            else:
+                draft.warnings.append(
+                    "AI 拆解暂时不可用，已用内置规则完成这次规划"
+                )
 
         self.last_validation = validate_plan(
             draft,
@@ -472,7 +477,7 @@ class LlmEngine:
             steps = _normalise_steps(task, raw_steps, prefs)
             if steps is None:
                 self.last_error = "model reply did not satisfy the step rules"
-                logger.info(
+                logger.warning(
                     "llm reply rejected for task %s, using rules", task.id
                 )
                 result[task.id] = self.fallback.decompose(task, prefs)
@@ -623,6 +628,7 @@ def _pick_task_steps(
         raise LlmError("model reply is missing the tasks array")
 
     replies: dict[str, list[dict[str, Any]]] = {}
+    unmatched: list[list[dict[str, Any]]] = []
     by_title = {task.title.strip(): task.id for task in tasks}
     for row in rows:
         if not isinstance(row, dict):
@@ -631,11 +637,16 @@ def _pick_task_steps(
         if task_id not in wanted:
             title = str(row.get("title") or "").strip()
             task_id = by_title.get(title, "")
-        if not task_id:
-            continue
-        steps = row.get("steps")
-        if isinstance(steps, list):
-            replies[task_id] = [step for step in steps if isinstance(step, dict)]
+        steps = row.get("steps") if isinstance(row.get("steps"), list) else []
+        steps = [step for step in steps if isinstance(step, dict)]
+        if task_id in wanted:
+            replies[task_id] = steps
+        elif steps:
+            unmatched.append(steps)
+    # Models sometimes invent their own task ids; with a single task there
+    # is only one sensible assignment, so take it instead of falling back.
+    if len(tasks) == 1 and wanted[0] not in replies and unmatched:
+        replies[wanted[0]] = unmatched[0]
     return replies
 
 
@@ -653,7 +664,7 @@ def _normalise_steps(
         if not title:
             continue
         if not is_verb_first(title):
-            logger.info(
+            logger.warning(
                 "rejected non verb-first step for %s: %r", task.id, title[:24]
             )
             return None
