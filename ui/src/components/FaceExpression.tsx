@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 import type { FaceMood } from "../state/types";
 
 interface FaceExpressionProps {
@@ -19,13 +20,14 @@ export function FaceExpression({
   const thinking = mood === "thinking";
   const concerned = mood === "concerned";
   const listening = mood === "listening";
+  const { t } = useI18n();
 
   return (
     <motion.div
       className="face"
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`Flow 表情：${mood}`}
+      aria-label={t.face.aria(mood)}
       animate={quiet ? { y: 0 } : { y: [0, -5, 0] }}
       transition={{
         duration: 4.5,

@@ -225,7 +225,7 @@ sudo systemctl start flow-ui
 journalctl -u flow-ui -n 80 --no-pager
 ```
 
-- 屏幕应为 720×720 画布，无桌面、无鼠标光标（`unclutter`）。
+- 屏幕应为 1024×600 画布（点对点），无桌面、无鼠标光标（`unclutter`）。
 - kiosk 通过 `xbindkeys` 屏蔽 `Ctrl+W`、`Ctrl+Q`、`Alt+F4` 和鼠标右键；
   蓝牙默认关闭（安装时设 `KEEP_BLUETOOTH=1` 可保留）。
 - 中文应正常显示；若出现方块，执行 `fc-list :lang=zh | head` 确认 Noto CJK。

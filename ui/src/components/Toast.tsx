@@ -1,10 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useI18n } from "../i18n";
+import type { ToastState } from "../state/types";
 
 interface ToastProps {
-  message: string | null;
+  toast: ToastState | null;
 }
 
-export function Toast({ message }: ToastProps) {
+export function Toast({ toast }: ToastProps) {
+  const { t, srv } = useI18n();
+  const message = toast === null ? null : toastText(toast, t.toast, srv);
   return (
     <AnimatePresence>
       {message ? (
@@ -23,4 +27,23 @@ export function Toast({ message }: ToastProps) {
       ) : null}
     </AnimatePresence>
   );
+}
+
+function toastText(
+  toast: ToastState,
+  copy: {
+    tasks: (count: number) => string;
+    reminder: string;
+    error: string;
+  },
+  srv: (text: string | null | undefined) => string,
+): string {
+  switch (toast.kind) {
+    case "tasks":
+      return copy.tasks(toast.count);
+    case "reminder":
+      return srv(toast.title) || copy.reminder;
+    case "error":
+      return srv(toast.text) || copy.error;
+  }
 }

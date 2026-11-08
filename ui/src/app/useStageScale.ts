@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 
+/** The panel on the device is a 7" 1024×600 TTL screen. */
+export const STAGE_WIDTH = 1024;
+export const STAGE_HEIGHT = 600;
+
 export function useStageScale(): number {
   const [scale, setScale] = useState(() => computeScale());
 
@@ -21,5 +25,5 @@ export function computeScale(
   width = window.innerWidth,
   height = window.innerHeight,
 ): number {
-  return Math.min(width / 720, height / 720);
+  return Math.min(width / STAGE_WIDTH, height / STAGE_HEIGHT);
 }

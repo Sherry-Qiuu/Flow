@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 import type { StepState } from "../state/types";
 import { ProgressRing } from "./ProgressRing";
 
@@ -7,6 +8,7 @@ interface StepCardProps {
 }
 
 export function StepCard({ step }: StepCardProps) {
+  const { t } = useI18n();
   const progress =
     step.totalMs > 0 ? step.remainingMs / step.totalMs : 0;
   return (
@@ -17,15 +19,25 @@ export function StepCard({ step }: StepCardProps) {
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
       <div className="step-card__meta">
-        <span>第 {step.index + 1} 步</span>
-        <span>{step.minutes} 分钟</span>
+        <span>{t.executing.step(step.index + 1)}</span>
+        <span>{t.executing.minutes(step.minutes)}</span>
       </div>
-      <ProgressRing progress={progress} size={330}>
-        <div className="step-card__time">{formatRemaining(step.remainingMs)}</div>
-        <div className="step-card__hint">只看眼前</div>
-      </ProgressRing>
-      <h1 className="step-card__title">{step.title}</h1>
-      {step.detail ? <p className="step-card__detail">{step.detail}</p> : null}
+      <div className="step-card__visual">
+        <ProgressRing progress={progress} size={300}>
+          <div className="step-card__time">
+            {formatRemaining(step.remainingMs)}
+          </div>
+          <div className="step-card__hint">{t.executing.ringHint}</div>
+        </ProgressRing>
+      </div>
+      <div className="step-card__copy">
+        <h1 className="step-card__title">
+          {step.title || t.executing.currentStep}
+        </h1>
+        {step.detail ? (
+          <p className="step-card__detail">{step.detail}</p>
+        ) : null}
+      </div>
     </motion.div>
   );
 }

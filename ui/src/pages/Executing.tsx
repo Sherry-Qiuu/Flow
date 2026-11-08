@@ -2,34 +2,33 @@ import { StepCard } from "../components/StepCard";
 import { PageShell, type PageProps } from "../components/PageShell";
 import { TouchButton } from "../components/TouchButton";
 import { focusControl } from "../app/touch";
+import { useI18n } from "../i18n";
 
 export function Executing({ state }: PageProps) {
+  const { t } = useI18n();
   return (
-    <PageShell
-      className="executing"
-      footer="点按钮，或说“完成/跳过/卡住”"
-    >
+    <PageShell className="executing" footer={t.executing.footer}>
       {state.step ? (
         <StepCard step={state.step} />
       ) : (
-        <p className="executing-empty">这一步已经结束了。</p>
+        <p className="executing-empty">{t.executing.empty}</p>
       )}
       <div className="touch-actions">
         <TouchButton
-          label="完成"
+          label={t.executing.finish}
           variant="primary"
           onClick={() => focusControl("finish")}
         />
         <TouchButton
-          label="跳过"
+          label={t.executing.skip}
           onClick={() => focusControl("skip")}
         />
         <TouchButton
-          label="卡住"
+          label={t.executing.stuck}
           onClick={() => focusControl("stuck")}
         />
         <TouchButton
-          label="延长 10 分钟"
+          label={t.executing.extend}
           onClick={() => focusControl("extend", 10)}
         />
       </div>

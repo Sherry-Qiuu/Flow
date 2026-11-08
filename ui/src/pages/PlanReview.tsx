@@ -2,20 +2,19 @@ import { motion } from "framer-motion";
 import { PageShell, type PageProps } from "../components/PageShell";
 import { TouchButton } from "../components/TouchButton";
 import { confirmPlan, sendIntent } from "../app/touch";
+import { useI18n } from "../i18n";
 
 export function PlanReview({ state }: PageProps) {
+  const { t } = useI18n();
   const items = state.plan?.items.slice(0, 3) ?? [];
   const totalItems = state.plan?.items.length ?? 0;
   return (
-    <PageShell
-      className="plan-review"
-      footer="点“确认”开始执行"
-    >
-      <p className="eyebrow">计划草案</p>
-      <h1 className="page__title">今天先做这些</h1>
+    <PageShell className="plan-review" footer={t.planReview.footer}>
+      <p className="eyebrow">{t.planReview.eyebrow}</p>
+      <h1 className="page__title">{t.planReview.title}</h1>
       <div className="plan-review__list">
         {items.length === 0 ? (
-          <p className="page__message">还没有计划，先说一件想做的事。</p>
+          <p className="page__message">{t.planReview.empty}</p>
         ) : (
           items.map((item, index) => (
             <motion.div
@@ -26,11 +25,13 @@ export function PlanReview({ state }: PageProps) {
               transition={{ delay: 0.08 * index, duration: 0.35 }}
             >
               <span className="plan-review__time">
-                {item.start ?? `第 ${index + 1} 步`}
+                {item.start ?? t.planReview.step(index + 1)}
               </span>
               <span className="plan-review__title">{item.title}</span>
               <span className="plan-review__minutes">
-                {item.est_minutes ? `${item.est_minutes} 分钟` : ""}
+                {item.est_minutes
+                  ? t.planReview.minutes(item.est_minutes)
+                  : ""}
               </span>
             </motion.div>
           ))
@@ -38,12 +39,12 @@ export function PlanReview({ state }: PageProps) {
       </div>
       {totalItems > 3 ? (
         <p className="plan-review__more">
-          还有 {totalItems - 3} 步，确认后再看
+          {t.planReview.more(totalItems - 3)}
         </p>
       ) : null}
       <div className="touch-actions">
         <TouchButton
-          label="确认，开始"
+          label={t.planReview.confirm}
           variant="primary"
           disabled={!state.plan?.plan_id}
           onClick={() =>
@@ -53,7 +54,7 @@ export function PlanReview({ state }: PageProps) {
           }
         />
         <TouchButton
-          label="再改改"
+          label={t.planReview.revise}
           onClick={() => sendIntent("返回")}
         />
       </div>

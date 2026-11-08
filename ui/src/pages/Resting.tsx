@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
 import { FaceExpression } from "../components/FaceExpression";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { useI18n } from "../i18n";
 
 export function Resting({ state }: PageProps) {
+  const { t, srv } = useI18n();
   return (
-    <PageShell
-      className="resting"
-      footer="休息不是中断，是计划的一部分"
-    >
+    <PageShell className="resting" footer={t.resting.footer}>
       <div className="resting__stage">
         <motion.div
           className="resting__breath"
@@ -16,8 +15,10 @@ export function Resting({ state }: PageProps) {
         />
         <FaceExpression mood="sleepy" size={300} quiet />
       </div>
-      <p className="eyebrow">休息一下</p>
-      <p className="page__message">{state.message}</p>
+      <p className="eyebrow">{t.resting.eyebrow}</p>
+      <p className="page__message">
+        {srv(state.message) || t.phases.resting}
+      </p>
     </PageShell>
   );
 }

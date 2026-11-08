@@ -45,17 +45,6 @@ export const PHASE_FACE: Record<Phase, FaceMood> = {
   settings: "neutral",
 };
 
-export const PHASE_MESSAGE: Record<Phase, string> = {
-  idle: "今天想先做什么？",
-  listening: "我在听。",
-  thinking: "正在把这件事拆小…",
-  plan_review: "这份计划可以吗？",
-  executing: "只做眼前这一步。",
-  celebrating: "这一步完成了。",
-  resting: "休息一下，等会儿继续。",
-  settings: "设置由语音或手势打开。",
-};
-
 const EMOTION_FACE: Record<string, FaceMood> = {
   neutral: "neutral",
   happy: "happy",
@@ -79,9 +68,8 @@ export function makeInitialState(now = new Date()): FlowState {
     channelData: {},
     channelHints: [],
     face: "neutral",
-    message: PHASE_MESSAGE.idle,
-    clock: formatClock(now),
-    date: formatDate(now),
+    message: "",
+    now,
     plan: null,
     step: null,
     phone: { present: false, charging: false },
@@ -104,8 +92,7 @@ export function reducer(
     case "clock":
       return {
         ...state,
-        clock: formatClock(action.now),
-        date: formatDate(action.now),
+        now: action.now,
       };
     case "connection":
       return {
@@ -152,6 +139,7 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
         channelTitle: "",
         channelData: {},
         channelHints: [],
+        message: "",
       };
     case "assistant.say":
       return applyAssistant(base, payload);
@@ -166,7 +154,7 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
         ...base,
         phase: "executing",
         channelActive: false,
-        message: "计划已确认，先做第一步。",
+        message: "",
         face: "neutral",
       };
     case "focus.state":
@@ -176,8 +164,8 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
     case "reminder.fired":
       return {
         ...base,
-        message: text(payload.title, "时间到了。"),
-        toast: text(payload.title, "时间到了。"),
+        message: text(payload.title, ""),
+        toast: { kind: "reminder", title: text(payload.title, "") },
       };
     case "reward.event":
       return {
@@ -185,7 +173,7 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
         phase: "celebrating",
         channelActive: false,
         face: "excited",
-        message: text(payload.message, "完成一步，做得很好。"),
+        message: text(payload.message, ""),
       };
     case "reward.feedback":
       return {
@@ -193,7 +181,7 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
         phase: "celebrating",
         channelActive: false,
         face: "excited",
-        message: text(payload.message, "这一小步，稳稳的。"),
+        message: text(payload.message, ""),
       };
     case "phone.changed":
       return { ...base, phone: phoneFrom(payload, base.phone) };
@@ -201,7 +189,7 @@ function applyMessage(state: FlowState, message: WsMessage): FlowState {
       return {
         ...base,
         face: "concerned",
-        toast: text(payload.message, "刚才没有成功，请再说一次。"),
+        toast: { kind: "error", text: text(payload.message, "") },
       };
     default:
       return base;
@@ -233,7 +221,9 @@ function applyStateSync(
       ? stringList(channelState.hints)
       : [],
     face: PHASE_FACE[phase],
-    message: text(payload.message, PHASE_MESSAGE[phase]),
+    // On the home screen the backend message is a channel hint, not a
+    // greeting; the page owns that line and renders its own phase copy.
+    message: phase === "idle" ? "" : text(payload.message, ""),
     phone: phoneFrom(payload.phone, state.phone),
     companion: companionFrom(payload.companion) ?? state.companion,
     plan,
@@ -263,17 +253,11 @@ function applyChannelEnter(
     phase: "idle",
     channel,
     channelActive: true,
-    channelTitle: text(
-      payload.title ?? snapshot.title,
-      channelLabel(channel),
-    ),
+    channelTitle: text(payload.title ?? snapshot.title, ""),
     channelData: asRecord(snapshot.data),
     channelHints: stringList(snapshot.hints),
     face: "neutral",
-    message: text(
-      stringList(snapshot.hints)[0],
-      "说“返回”回到主页",
-    ),
+    message: stringList(snapshot.hints)[0] ?? "",
   };
 }
 
@@ -290,10 +274,7 @@ function applyPhase(
     phase,
     channel: asChannel(payload.channel) ?? state.channel,
     face: PHASE_FACE[phase],
-    message:
-      phase === "executing" && state.step
-        ? state.message
-        : PHASE_MESSAGE[phase],
+    message: "",
   };
 }
 
@@ -334,7 +315,7 @@ function applyPlan(
     phase: "plan_review",
     channelActive: false,
     face: PHASE_FACE.plan_review,
-    message: "这份计划可以吗？",
+    message: "",
   };
 }
 
@@ -362,9 +343,9 @@ function applyFocus(
         ? { ...state.channelData, remaining_seconds: remaining, running }
         : state.channelData,
     message: ended
-      ? PHASE_MESSAGE.idle
+      ? ""
       : focusing
-        ? text(payload.message, "只做眼前这一步。")
+        ? text(payload.message, "")
         : state.message,
   };
 }
@@ -380,7 +361,7 @@ function applyTasks(
   return {
     ...state,
     tasksCount: count,
-    toast: `已记录 ${count} 个任务`,
+    toast: { kind: "tasks", count },
   };
 }
 
@@ -423,7 +404,7 @@ function stepFrom(value: unknown): StepState | null {
   const remaining = integer(record.remaining_ms, undefined);
   const total = integer(record.total_ms, undefined);
   return {
-    title: text(record.title, "当前这一步"),
+    title: text(record.title, ""),
     detail: text(record.detail, undefined),
     minutes: integer(record.minutes, 25),
     remainingMs: remaining ?? 25 * 60 * 1000,
@@ -453,26 +434,10 @@ function companionFrom(value: unknown): CompanionState | null {
   return {
     exp: integer(record.exp, 0),
     level: integer(record.level, 0),
-    stage: text(record.stage, "幼芽"),
+    stage: text(record.stage, ""),
     streak: integer(record.streak, 0),
     next_exp: integer(record.next_exp, undefined),
   };
-}
-
-export function formatClock(date: Date): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
-export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-  }).format(date);
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {
@@ -492,21 +457,6 @@ export function asChannel(value: unknown): Channel | null {
   return typeof value === "string" && CHANNELS.includes(value as Channel)
     ? (value as Channel)
     : null;
-}
-
-export function channelLabel(channel: Channel): string {
-  const labels: Record<Channel, string> = {
-    clock: "时钟",
-    tasks: "任务清单",
-    plan: "计划表",
-    focus: "专注计时",
-    reminder: "提醒",
-    music: "音乐",
-    phone: "手机使用",
-    home: "主页",
-    idle: "主页",
-  };
-  return labels[channel];
 }
 
 function stringList(value: unknown): string[] {

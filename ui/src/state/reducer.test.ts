@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { formatClock } from "../i18n";
 import {
   makeInitialState,
   reducer,
   asPhase,
-  formatClock,
 } from "./reducer";
 import type { FlowState } from "./types";
 
@@ -29,7 +29,8 @@ describe("flow reducer", () => {
     expect(state.phase).toBe("idle");
     expect(state.face).toBe("neutral");
     expect(state.offline).toBe(false);
-    expect(state.clock).toBe(formatClock(at));
+    expect(state.now.getTime()).toBe(at.getTime());
+    expect(formatClock(state.now)).toBe(formatClock(at));
   });
 
   it("switches every phase and face", () => {
@@ -133,7 +134,7 @@ describe("flow reducer", () => {
 
     state = withMessage(state, "error", { message: "网络断开" });
     expect(state.face).toBe("concerned");
-    expect(state.toast).toBe("网络断开");
+    expect(state.toast).toEqual({ kind: "error", text: "网络断开" });
   });
 
   it("opens and closes a T04 channel", () => {
@@ -278,6 +279,7 @@ describe("flow reducer", () => {
       type: "clock",
       now: later,
     });
-    expect(state.clock).toBe(formatClock(later));
+    expect(state.now.getTime()).toBe(later.getTime());
+    expect(formatClock(state.now)).toBe("11:00");
   });
 });

@@ -1,0 +1,140 @@
+import type { Copy } from "./types";
+
+export const EN: Copy = {
+  meta: { title: "Flow" },
+  face: { aria: (mood) => `Flow face: ${mood}` },
+  language: {
+    group: "Language",
+    zh: "中文",
+    en: "EN",
+  },
+  phases: {
+    idle: "What would you like to start with?",
+    listening: "I'm listening.",
+    thinking: "Breaking this into smaller steps…",
+    plan_review: "How does this plan look?",
+    executing: "Just this step.",
+    celebrating: "This step is done.",
+    resting: "Take a breath — we'll continue.",
+    settings: "Settings open by voice.",
+  },
+  idle: {
+    title: "Flow",
+    footer: "Tap to begin, or just say a word",
+    tasks: "Tasks",
+    focus: "Focus 15 min",
+    plan: "Plan my day",
+  },
+  listening: {
+    eyebrow: "Listening",
+    footer: "Stop when you're done — I'll split it",
+  },
+  thinking: {
+    footer: "Usually only a few seconds",
+  },
+  planReview: {
+    eyebrow: "Draft plan",
+    title: "Start with these today",
+    empty: "Nothing planned yet — tell me one thing you want to do.",
+    step: (index) => `Step ${index}`,
+    minutes: (minutes) => `${minutes} min`,
+    more: (count) =>
+      `${count} more ${count === 1 ? "step" : "steps"} after you confirm`,
+    confirm: "Confirm, start",
+    revise: "Adjust",
+    footer: "Tap Confirm to begin",
+  },
+  executing: {
+    footer: "Tap, or say done / skip / stuck",
+    empty: "This step has already ended.",
+    finish: "Done",
+    skip: "Skip",
+    stuck: "Stuck",
+    extend: "Extend 10 min",
+    step: (index) => `Step ${index}`,
+    minutes: (minutes) => `${minutes} min`,
+    ringHint: "Just this",
+    currentStep: "This step",
+  },
+  celebrate: {
+    title: "Step complete",
+    footer: "This small step counts",
+  },
+  resting: {
+    eyebrow: "Take a break",
+    footer: "A break is part of the plan",
+  },
+  settings: {
+    eyebrow: "Design system",
+    title: "Less, but clearer",
+    tokens: [
+      {
+        title: "Warm, low saturation",
+        detail: "Amber / sage / rose",
+      },
+      {
+        title: "Type scale",
+        detail: "Body 30 · step 48 · clock 92",
+      },
+      {
+        title: "Motion",
+        detail: "200 / 400 / 800 ms, transform + opacity only",
+      },
+      {
+        title: "Voice-first",
+        detail: "Every action has a voice equivalent",
+      },
+    ],
+    footer: "Settings open by voice",
+  },
+  channel: {
+    kicker: "Active channel",
+    back: "Back",
+    phoneBack: "Phone put back",
+    footerHint: "Say “back” to return home",
+    emptyTasks: "No tasks yet",
+    emptyPlans: "No plans yet",
+    focusRunning: "Focusing",
+    focusPaused: "Paused",
+    focusReady: "Ready to start",
+    phonePurpose: { study: "Study", leisure: "Leisure" },
+    phoneOverdue: "time to put it back",
+    phoneInUse: "in use",
+    reminderUnit: (count) =>
+      count === 1 ? "reminder" : "reminders",
+    musicPlaying: "Playing",
+    musicPaused: "Paused",
+    musicFallback: "Soft focus",
+    unnamed: "Untitled",
+    more: (count) => `${count} more`,
+    labels: {
+      clock: "Clock",
+      tasks: "Tasks",
+      plan: "Plan",
+      focus: "Focus timer",
+      reminder: "Reminders",
+      music: "Music",
+      phone: "Phone",
+      home: "Home",
+      idle: "Home",
+    },
+  },
+  phoneBadge: {
+    dockedCharging: "Phone docked · charging",
+    docked: "Phone docked",
+    away: "Phone not docked",
+  },
+  companion: {
+    max: "Max",
+    streak: (days) => `${days}-day streak`,
+  },
+  offline: {
+    base: "Offline mode",
+    reconnecting: "Offline · reconnecting",
+  },
+  toast: {
+    tasks: (count) => `Saved ${count} ${count === 1 ? "task" : "tasks"}`,
+    reminder: "Time's up.",
+    error: "That didn't work — say it once more.",
+  },
+};

@@ -2,10 +2,10 @@
 
 ## 全新设备
 
-1. 烧录 Raspberry Pi OS Lite，接触屏/麦克风/音箱/支架。
+1. 烧录 Raspberry Pi OS Lite，接 1024×600 触屏/麦克风/音箱/支架。
 2. 复制仓库到设备，执行 `sudo bash install.sh --display hdmi1024x600`
-   （7" 1024×600 RTD2660TP 屏）、`--display hdmi1280x800`（10.1" 16:10 屏）
-   或 `--display hdmi720`（7" 方屏）。
+   （7" 1024×600 RTD2660TP 屏）；另有 `--display hdmi1280x800`（10.1" 16:10 屏）、
+   `--display hdmi720`（720×720 方屏）和 `--display dsi`（排线触屏）。
 3. 编辑 `/opt/flow/.env`（参考 `.env.example`），不要提交到 git。
 4. 执行 `sudo flow-start` 或重启，检查：
    - `systemctl status flow-hal flow-backend flow-ui`
@@ -17,24 +17,25 @@
 
 ## 自主运行（拔掉笔记本也能用）
 
-安装完只代表代码到位，`--display none` 的机器开机是不亮屏、也听不懂人话的。
+安装完只代表代码到位；显示模式与离线语音没配的机器，开机可能不亮屏、也听不懂人话。
 把设备变成“插电就自己跑”的两步：
 
 ```bash
 # 已经装过：一条命令补显示 + 离线语音 + 开机自启校验
-sudo bash deploy/setup-standalone.sh --display hdmi720   # 或 dsi
+sudo bash deploy/setup-standalone.sh --display hdmi1024x600   # 本机面板；另有 hdmi720 / hdmi1280x800 / dsi
 sudo reboot
 ```
 
-- `--display hdmi720|hdmi1024x600|hdmi1280x800|dsi` 写入 `/boot/firmware/config.txt`
+- `--display hdmi1024x600|hdmi1280x800|hdmi720|dsi` 写入 `/boot/firmware/config.txt`
   的托管块，回滚用 `sudo flow-display none`；7" 1024×600 RTD2660TP 屏选
-  `hdmi1024x600`，10.1" 16:10 HDMI 屏选 `hdmi1280x800`，7" 方屏选 `hdmi720`，
-  排线触屏选 `dsi`
+  `hdmi1024x600`，10.1" 16:10 HDMI 屏选 `hdmi1280x800`，720×720 方屏选
+  `hdmi720`，排线触屏选 `dsi`。**1024×600 面板不要套 `hdmi720`**（信号会被
+  驱动板拉伸变形）
 - 离线语音由 `deploy/setup-voice.sh` 独立完成，也可单跑：
   `sudo bash deploy/setup-voice.sh`（装 `vosk` + 中文小模型到
   `/opt/flow/models`，并写好 `FLOW_VOSK_MODEL`）。模型在本地推理，
   **断网也能识别**；想换模型或走镜像：`--model` / `--model-url`
-- 全新安装可以一步到位：`sudo bash install.sh --display hdmi720 --vosk`
+- 全新安装可以一步到位：`sudo bash install.sh --display hdmi1024x600 --vosk`
 - 语音播报需要 `espeak-ng`，脚本会顺带装上（`--no-tts` 可跳过）
 
 验收（重启后不连电脑也能复现）：

@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
 import { FaceExpression } from "../components/FaceExpression";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { useI18n } from "../i18n";
 
 export function Listening({ state }: PageProps) {
+  const { t, srv } = useI18n();
   return (
-    <PageShell
-      className="listening"
-      footer="说完停一下，我会自己断句"
-    >
+    <PageShell className="listening" footer={t.listening.footer}>
       <div className="listening__stage">
         <motion.div
           className="listening__ring"
@@ -26,8 +25,10 @@ export function Listening({ state }: PageProps) {
         />
         <FaceExpression mood="listening" size={300} />
       </div>
-      <p className="eyebrow">我在听</p>
-      <p className="page__message">{state.message}</p>
+      <p className="eyebrow">{t.listening.eyebrow}</p>
+      <p className="page__message">
+        {srv(state.message) || t.phases.listening}
+      </p>
     </PageShell>
   );
 }

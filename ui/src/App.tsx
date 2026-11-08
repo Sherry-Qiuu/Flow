@@ -81,7 +81,7 @@ export function App() {
             <Page key={pageKey} state={state} />
           </AnimatePresence>
           <OfflineBadge offline={state.offline} reconnecting={reconnecting} />
-          <Toast message={state.toast} />
+          <Toast toast={state.toast} />
         </div>
       </div>
     </MotionConfig>

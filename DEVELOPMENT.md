@@ -12,7 +12,7 @@
 | **T02** HAL 与开机自检 | 已完成（mock 优先） | 设备契约、mock/real 适配、`python -m hal.selftest`、`device_status` 落库、`phone.changed` 事件 |
 | **T03** 后端骨架与事件总线 | 已完成 | FastAPI、WS、asyncio EventBus、配置/`.env`、JSON 日志、健康检查、单 worker 生命周期 |
 | **T04** 单通道状态机与工具路由 | 已完成 | 6 通道、先 exit 再 enter、返回栈 ≤3、意图路由、异常回退、30 分钟过载收敛 |
-| **T05** 屏幕 UI 框架 | 已完成 | React + Vite + TS + Tailwind + Framer Motion，720 画布、8 表情、7+1 页面、自动重连、通道视图 |
+| **T05** 屏幕 UI 框架 | 已完成 | React + Vite + TS + Tailwind + Framer Motion，1024×600 画布、8 表情、7+1 页面、中英双语、自动重连、通道视图 |
 | **T06** 语音输入管线 | 核心完成 | 16k 采集/3s 预录、能量 VAD、partial/final、云端/Vosk 降级、打断、空识别提示 |
 | **T07** 语音输出与表情联动 | 已完成（mock/espeak） | 优先级播报队列、去重、缓存、静音时段、emotion + 文字 + TTS；edge-tts 仅保留可选钩子 |
 | **T08** 对话管理与多轮确认 | 已完成 | 8 轮上下文、9 工具、单槽澄清、破坏性二次确认、改口、30s 超时、Action 分发 |
@@ -228,12 +228,26 @@ $env:FLOW_VOSK_MODEL = "D:\\models\\vosk-model-small-cn"
 cd Flow/ui
 npm.cmd install
 npm.cmd run dev       # http://127.0.0.1:5173，/ws 代理到 8000
-npm.cmd test          # 27 个 reducer / ws / 页面测试
+npm.cmd test          # 43 个 reducer / ws / 页面 / i18n 测试
 npm.cmd run build     # 生成 ui/dist，后端自动挂载
 ```
 
 生产不需要 Node：`ui/dist` 是构建产物，`install.sh` 会把它一起复制到
 `/opt/flow/ui/dist`。kiosk 仍然访问 `http://127.0.0.1:8000/`。
+
+### 屏幕画布与界面语言
+
+- 画布按 7 英寸 **1024×600** 横屏设计，`useStageScale` 以
+  `min(窗口宽/1024, 窗口高/600)` 等比缩放；800×480、1024×600 等窗口都不裁切。
+- 设备界面中英双语：页脚右侧「中文 / EN」即时切换，选择写入
+  `localStorage["flow.lang"]`，首次可直接用 `?lang=en` 打开；`<html lang>`
+  与日期格式随语言同步。
+- UI 文案在 `ui/src/i18n/zh.ts` / `en.ts`，两份字典结构由
+  `ui/src/i18n/copy.test.ts` 校验。后端仍以中文写出的频道标题、提示语、
+  庆祝语在 `ui/src/i18n/server.ts` 做精确映射，未命中的文本原样透传——
+  任务、计划、提醒等用户内容保持原语言，不翻译。
+- 触屏按钮的显示文案随语言切换，但 `/api/intent` 发送的仍是中文指令，
+  因为后端路由器按中文关键词匹配。
 
 ### HAL 自检
 
@@ -274,7 +288,7 @@ python -m hal.selftest --audio-seconds 1.0 --db data/flow.db
 
 ### 触屏交互
 
-产品已改为 720×720 触屏，手势输入已移除。UI 的通道/计划/执行按钮通过同源
+产品已改为 1024×600 触屏，手势输入已移除。UI 的通道/计划/执行按钮通过同源
 `fetch` 调用 `/api/intent`、`/api/plan/{id}/confirm`、`/api/focus/control`；
 语音仍通过 T06/T04 进入同一套后端动作。手机在位与充电契约属于 T20/T21，独立
 于触屏。
@@ -350,9 +364,10 @@ assert engine.last_validation.ok
 
 - 7 个页面随 `ui.phase` 切换；`Settings` 是额外设计系统页，不影响主流程。
 - `state.sync` 恢复完整状态；断线保留最后画面并显示离线角标，重连后重新同步。
-- 720×720 画布按实际窗口 `min(w/720,h/720)` 缩放；800×480、720×720、1024×600
+- 1024×600 画布按实际窗口 `min(w/1024,h/600)` 缩放；800×480、1024×600
   均不溢出（浏览器截图验证）。
-- 正文 ≥30px、步骤 48px，中文长标题 `overflow-wrap + line-clamp`，无横向滚动。
+- 正文 ≥26px、步骤 44px，中文长标题 `overflow-wrap + line-clamp`，无横向滚动。
+- 页脚语言切换即时刷新全部 UI 文案；切换后 `<html lang>`、日期与时间格式同步变化。
 - 执行态只有 `StepCard + ProgressRing + 剩余时间`，不显示任务列表。
 - 页面主操作使用大尺寸触屏按钮；语音和触屏最终走同一套后端动作。
 

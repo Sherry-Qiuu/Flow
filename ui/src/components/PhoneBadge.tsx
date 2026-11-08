@@ -1,11 +1,13 @@
+import { useI18n } from "../i18n";
 import type { PhoneState } from "../state/types";
 
 export function PhoneBadge({ phone }: { phone: PhoneState }) {
+  const { t } = useI18n();
   const label = phone.present
     ? phone.charging
-      ? "手机在架 · 充电中"
-      : "手机在架"
-    : "手机不在架";
+      ? t.phoneBadge.dockedCharging
+      : t.phoneBadge.docked
+    : t.phoneBadge.away;
   return (
     <div
       className={`phone-badge${phone.present ? " phone-badge--present" : ""}`}
