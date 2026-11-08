@@ -41,7 +41,7 @@ logging:
 
 ui:
   url: "http://127.0.0.1:8000"
-  size: "720x720"
+  size: "1024x600"
 
 # T12 LLM main path (拆解)。API key 只从 .env 的 DEEPSEEK_API_KEY 读取，
 # 不要写在这里；没有 key 时自动回退内置规则引擎。

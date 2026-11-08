@@ -1,15 +1,14 @@
 import { motion } from "framer-motion";
 import { FaceExpression } from "../components/FaceExpression";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { useI18n } from "../i18n";
 
 const PARTICLES = Array.from({ length: 14 }, (_, index) => index);
 
 export function Celebrate({ state }: PageProps) {
+  const { t, srv } = useI18n();
   return (
-    <PageShell
-      className="celebrate"
-      footer="这一小步，已经算数"
-    >
+    <PageShell className="celebrate" footer={t.celebrate.footer}>
       <div className="celebrate__confetti" aria-hidden="true">
         {PARTICLES.map((index) => (
           <motion.span
@@ -32,8 +31,10 @@ export function Celebrate({ state }: PageProps) {
         ))}
       </div>
       <FaceExpression mood="excited" size={300} />
-      <h1 className="page__title">完成一步</h1>
-      <p className="page__message">{state.message}</p>
+      <h1 className="page__title">{t.celebrate.title}</h1>
+      <p className="page__message">
+        {srv(state.message) || t.phases.celebrating}
+      </p>
     </PageShell>
   );
 }

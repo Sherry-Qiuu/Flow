@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useI18n } from "../i18n";
 
 interface OfflineBadgeProps {
   offline: boolean;
@@ -9,6 +10,7 @@ export function OfflineBadge({
   offline,
   reconnecting,
 }: OfflineBadgeProps) {
+  const { t } = useI18n();
   if (!offline) {
     return null;
   }
@@ -22,7 +24,7 @@ export function OfflineBadge({
       aria-live="polite"
     >
       <span className="offline-badge__dot" />
-      {reconnecting ? "离线模式 · 正在重连" : "离线模式"}
+      {reconnecting ? t.offline.reconnecting : t.offline.base}
     </motion.div>
   );
 }

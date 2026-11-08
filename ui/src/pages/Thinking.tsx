@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
 import { FaceExpression } from "../components/FaceExpression";
 import { PageShell, type PageProps } from "../components/PageShell";
+import { useI18n } from "../i18n";
 
 export function Thinking({ state }: PageProps) {
+  const { t, srv } = useI18n();
   return (
-    <PageShell
-      className="thinking"
-      footer="通常只要几秒钟"
-    >
+    <PageShell className="thinking" footer={t.thinking.footer}>
       <FaceExpression mood="thinking" size={300} />
       <div className="thinking__dots" aria-hidden="true">
         {[0, 1, 2].map((index) => (
@@ -22,7 +21,9 @@ export function Thinking({ state }: PageProps) {
           />
         ))}
       </div>
-      <p className="page__message">{state.message}</p>
+      <p className="page__message">
+        {srv(state.message) || t.phases.thinking}
+      </p>
     </PageShell>
   );
 }

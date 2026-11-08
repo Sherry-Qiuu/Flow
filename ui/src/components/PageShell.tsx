@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import type { FlowState } from "../state/types";
+import { LanguageSwitch } from "./LanguageSwitch";
 
 export interface PageProps {
   state: FlowState;
@@ -24,7 +25,12 @@ export function PageShell({
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
       <div className="page__body">{children}</div>
-      {footer ? <footer className="page__footer">{footer}</footer> : null}
+      <footer className="page__footer">
+        {footer ? (
+          <span className="page__footer-text">{footer}</span>
+        ) : null}
+        <LanguageSwitch />
+      </footer>
     </motion.section>
   );
 }

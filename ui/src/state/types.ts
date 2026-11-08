@@ -71,6 +71,15 @@ export interface CompanionState {
   next_exp?: number | null;
 }
 
+/**
+ * Toast copy is stored as data, not as a ready-made sentence, so the
+ * screen can render it in the current language.
+ */
+export type ToastState =
+  | { kind: "tasks"; count: number }
+  | { kind: "reminder"; title: string }
+  | { kind: "error"; text: string };
+
 export interface FlowState {
   phase: Phase;
   channel: Channel;
@@ -79,9 +88,9 @@ export interface FlowState {
   channelData: Record<string, unknown>;
   channelHints: string[];
   face: FaceMood;
+  /** Raw backend text; the page localizes it, content passes through. */
   message: string;
-  clock: string;
-  date: string;
+  now: Date;
   plan: PlanSummary | null;
   // Null when nothing is running: a placeholder step used to sit here and the
   // executing page rendered it as if it were the real current step.
@@ -92,7 +101,7 @@ export interface FlowState {
   connection: ConnectionStatus;
   offline: boolean;
   lastSeq: number;
-  toast: string | null;
+  toast: ToastState | null;
 }
 
 export interface WsMessage {

@@ -11,7 +11,7 @@
 | 前置依赖 | `T01` |
 | 需协同 | `T03`、`T04`、`T13`、`T16` |
 | 建议角色 | 前端 |
-| 当前状态 | 🟢 已实现（React/Vite/TS/Tailwind/Motion、720 画布、8 表情、7+1 页面、自动重连、ui/dist） |
+| 当前状态 | 🟢 已实现（React/Vite/TS/Tailwind/Motion、1024×600 画布、8 表情、7+1 页面、中英双语、自动重连、ui/dist） |
 | 子任务数 | 5 项（见第 5 节） |
 
 ## 1. 目标
@@ -41,7 +41,7 @@
 ## 4. 工作内容
 
 - [ ] 技术栈：React 18 + Vite + TypeScript + TailwindCSS + Framer Motion
-- [ ] 设计画布 720×720，按实际屏幕分辨率等比缩放（CSS 变量 + transform scale）
+- [ ] 设计画布 1024×600（7″ 横屏），按实际窗口分辨率等比缩放（`min(w/1024,h/600)` + transform scale）
 - [ ] 设计令牌：低饱和暖色板、字号阶梯（正文 ≥ 28px、步骤主字 ≥ 40px）、圆角、间距、动效时长（200/400/800ms）
 - [ ] 页面：Idle（待机：表情 + 时钟 + 一句话）、Listening、Thinking、PlanReview、Executing（单步大字卡）、Celebrate、Resting、Settings
 - [ ] 组件：FaceExpression（8 种表情状态机）、BigText、StepCard、ProgressRing、Toast、OfflineBadge
@@ -55,7 +55,7 @@
 
 | 子任务 | 名称 | 产物 | 完成判据 | 人日 |
 |---|---|---|---|---|
-| `T05.1` | 工程脚手架与设计令牌 | `ui/src/tokens/{colors,typography,motion}.ts` | Vite+React+TS+Tailwind+Motion 跑得起来；720×720 画布变量就位 | 0.5 |
+| `T05.1` | 工程脚手架与设计令牌 | `ui/src/tokens/{colors,typography,motion}.ts` | Vite+React+TS+Tailwind+Motion 跑得起来；1024×600 画布变量就位 | 0.5 |
 | `T05.2` | WS 客户端与状态 reducer | `ui/src/ws/client.ts, ui/src/state/reducer.ts` | 自动重连；断线保留最后状态并显示离线角标 | 0.5 |
 | `T05.3` | 七个页面 | `ui/src/pages/*` | Idle/Listening/Thinking/PlanReview/Executing/Celebrate/Resting 随 ui.phase 切换 | 1.5 |
 | `T05.4` | 表情与动效组件 | `ui/src/components/FaceExpression.tsx 等` | 8 种表情状态机；动效用 transform/opacity，60fps | 0.75 |
@@ -85,9 +85,10 @@ ui/src/
 ├── components/{StepCard,ProgressRing,OfflineBadge}.tsx
 └── pages/{Idle,Listening,Thinking,PlanReview,Executing,Celebrate,Resting}/
 
-画布 720×720，用 CSS 变量缩放而非重排：
-    :root { --scale: calc(100vw / 720); }
-    .canvas { width:720px; height:720px; transform: scale(var(--scale)); }
+画布 1024×600，用 transform 等比缩放而非重排：
+    /* ui/src/app/useStageScale.ts */
+    scale = min(window.innerWidth / 1024, window.innerHeight / 600)
+    .canvas { width:1024px; height:600px; transform: scale(scale); }
 
 硬规则：主操作有可点按钮，全部操作同时存在语音等效路径；手势已取消。
 ```
@@ -96,7 +97,8 @@ ui/src/
 
 - [ ] 7 个页面随 ui.phase 事件正确切换，任意顺序切换无白屏、无残留
 - [ ] WebSocket 断开后显示离线角标，恢复后自动重连并重新同步状态
-- [ ] 在 800×480 / 720×720 / 1024×600 三种分辨率下不溢出、不遮挡、字号可读
+- [ ] 在 800×480 / 1024×600 等分辨率下不溢出、不遮挡、字号可读
+- [ ] 页脚「中文 / EN」可切换全部 UI 文案，切换后 `<html lang>` 与日期格式同步
 - [ ] 中文在目标字号下清晰无截断（含长任务名换行策略）
 - [ ] 执行态屏幕只有一个步骤 + 剩余时间，没有任务列表
 
