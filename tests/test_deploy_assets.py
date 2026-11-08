@@ -171,6 +171,27 @@ def test_rsync_excludes_are_anchored_to_the_root():
         assert "--exclude='/data/'" in text or relative == "install.sh"
 
 
+def test_standalone_setup_assets_make_the_device_self_hosting():
+    """A machine with no laptop attached still needs a screen and ears."""
+    for relative in ("deploy/setup-voice.sh", "deploy/setup-standalone.sh"):
+        assert (ROOT / relative).is_file(), relative
+
+    voice = read("deploy/setup-voice.sh")
+    assert "vosk-model-small-cn-0.22" in voice
+    assert "FLOW_VOSK_MODEL" in voice
+    assert "chmod 600" in voice
+    assert 'grep -q \'^FLOW_VOSK_MODEL=\'' in voice
+
+    standalone = read("deploy/setup-standalone.sh")
+    assert "flow-display" in standalone
+    assert "setup-voice.sh" in standalone
+    assert "systemctl enable" in standalone
+
+    install = read("install.sh")
+    assert "--vosk" in install
+    assert "setup-voice.sh" in install
+
+
 def test_pyproject_declares_every_app_package():
     """pip install fails at runtime if the package list drifts from app/."""
     import tomllib

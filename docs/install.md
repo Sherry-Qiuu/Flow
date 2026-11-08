@@ -13,6 +13,36 @@
 5. 首次开机向导写入 `config.yaml`：
    `PYTHONPATH=/opt/flow/app /opt/flow/.venv/bin/python -m setup.wizard --name 小A`
 
+## 自主运行（拔掉笔记本也能用）
+
+安装完只代表代码到位，`--display none` 的机器开机是不亮屏、也听不懂人话的。
+把设备变成“插电就自己跑”的两步：
+
+```bash
+# 已经装过：一条命令补显示 + 离线语音 + 开机自启校验
+sudo bash deploy/setup-standalone.sh --display hdmi720   # 或 dsi
+sudo reboot
+```
+
+- `--display hdmi720|dsi` 写入 `/boot/firmware/config.txt` 的托管块，回滚用
+  `sudo flow-display none`；用 HDMI 方屏选 `hdmi720`，排线触屏选 `dsi`
+- 离线语音由 `deploy/setup-voice.sh` 独立完成，也可单跑：
+  `sudo bash deploy/setup-voice.sh`（装 `vosk` + 中文小模型到
+  `/opt/flow/models`，并写好 `FLOW_VOSK_MODEL`）。模型在本地推理，
+  **断网也能识别**；想换模型或走镜像：`--model` / `--model-url`
+- 全新安装可以一步到位：`sudo bash install.sh --display hdmi720 --vosk`
+- 语音播报需要 `espeak-ng`，脚本会顺带装上（`--no-tts` 可跳过）
+
+验收（重启后不连电脑也能复现）：
+
+```bash
+systemctl is-enabled flow-hal flow-backend flow-ui   # 三行 enabled
+curl -s http://127.0.0.1:8000/healthz                # voice.state = ok
+```
+
+任何一个 `disabled` 都说明它不会自己起来；`voice.state` 是 `disabled` 则是
+ASR 没配好，重新跑一次 `setup-voice.sh` 看输出。
+
 ## 升级（保留数据）
 
 ```bash
@@ -38,4 +68,5 @@ flow-restore --latest
 ## 已知边界
 
 - 真正定制 `.img` 需要 rpi-imager/firstrun，本仓库提供可复现的安装脚本作为交付方式。
-- 真实 ASR/TTS/ToF/摄像头准确率需要上机验收。
+- 离线 ASR 用 Vosk 中文小模型即可跑通；识别准确率仍要按现场噪声验收，
+  在线 ASR（`FLOW_ASR_URL`）配好后会优先走在线、失败再落回离线。

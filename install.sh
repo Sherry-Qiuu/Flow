@@ -21,6 +21,7 @@ WITH_REAL=1
 WITH_OPENCV=0
 KEEP_DESKTOP=0
 START_SERVICES=0
+VOSK=0
 
 usage() {
   cat <<'EOF'
@@ -36,6 +37,7 @@ Options:
   --skip-systemd               do not enable units (staging/testing)
   --keep-desktop               keep graphical.target (default: multi-user)
   --start                      start services after enabling
+  --vosk                       install the offline Chinese ASR model (T06)
   -h, --help                   show this help
 EOF
 }
@@ -60,6 +62,7 @@ while [ "$#" -gt 0 ]; do
     --skip-systemd) SKIP_SYSTEMD=1; shift ;;
     --keep-desktop) KEEP_DESKTOP=1; shift ;;
     --start) START_SERVICES=1; shift ;;
+    --vosk) VOSK=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown option: $1" >&2; usage; exit 2 ;;
   esac
@@ -256,6 +259,15 @@ chown -R "${FLOW_USER}:${FLOW_USER}" "${FLOW_HOME}"
 chmod 600 "${FLOW_HOME}/.env"
 chmod 0755 "${FLOW_HOME}/bin/flow-kiosk"
 
+if [ "${VOSK}" -eq 1 ]; then
+  voice_args=(--home "${FLOW_HOME}" --user "${FLOW_USER}" --no-restart)
+  [ "${SKIP_APT}" -eq 1 ] && voice_args+=(--skip-apt)
+  bash "${SOURCE_DIR}/deploy/setup-voice.sh" "${voice_args[@]}"
+  VOSK_LINE="${FLOW_HOME}/models (vosk, offline)"
+else
+  VOSK_LINE="not installed (rerun with --vosk)"
+fi
+
 cat <<EOF
 
 Flow installed at ${FLOW_HOME}
@@ -264,6 +276,7 @@ Flow installed at ${FLOW_HOME}
   kiosk:       ${FLOW_HOME}/bin/flow-kiosk
   diagnostics: flow-diag
   display:     ${DISPLAY_MODE}
+  offline ASR: ${VOSK_LINE}
 
 Next:
   1. Edit ${FLOW_HOME}/.env and fill API keys (keep mode 600).
@@ -271,9 +284,10 @@ Next:
      journalctl -u flow-hal -n 80 --no-pager
   3. Start backend:   sudo systemctl start flow-backend
      curl -s http://127.0.0.1:8000/healthz | jq
-  4. Reboot the Pi:   sudo reboot
-  5. After reboot:    systemctl status flow-hal flow-backend flow-ui
-  6. Support bundle:  sudo flow-diag
+  4. Standalone setup: sudo bash deploy/setup-standalone.sh --display ${DISPLAY_MODE}
+  5. Reboot the Pi:   sudo reboot
+  6. After reboot:    systemctl status flow-hal flow-backend flow-ui
+  7. Support bundle:  sudo flow-diag
 
 If this is a Desktop image, T01 expects Lite; the kiosk unit may
 conflict with the desktop session. See docs/deployment/T01-hardware-runbook.md.
