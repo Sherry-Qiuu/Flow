@@ -20,7 +20,7 @@
 | `install.sh` 一键安装、venv、systemd、journald、kiosk、`flow-diag` | 烧录 SD 卡、接线、上电、屏幕/摄像头/麦克风固定 |
 | T02 HAL + mock + `python -m hal.selftest` | 在树莓派上跑真实 HAL 自检，确认每个设备 |
 | T03 FastAPI + WebSocket + 事件总线 + `/healthz` | 用 `curl`、浏览器或 WS 客户端确认服务 |
-| 720×720 显示配置脚本 `flow-display hdmi720` | 确认屏幕实际分辨率、中文无方块 |
+| 显示配置脚本 `flow-display hdmi720\|hdmi1024x600\|hdmi1280x800\|dsi` | 确认屏幕实际分辨率、中文无方块 |
 | 开机服务顺序 `flow-hal → flow-backend → flow-ui` | 断电重启，计时 90 秒内进入界面 |
 
 我无法隔着网络替你插 CSI 排线、确认 HDMI 口或听扬声器；下面每一步都给了
@@ -230,7 +230,8 @@ journalctl -u flow-ui -n 80 --no-pager
   蓝牙默认关闭（安装时设 `KEEP_BLUETOOTH=1` 可保留）。
 - 中文应正常显示；若出现方块，执行 `fc-list :lang=zh | head` 确认 Noto CJK。
 - 若屏幕黑屏：先把显示恢复原生模式 `sudo flow-display none`，重启后再排查
-  HDMI 线/接口；`hdmi720` 依赖屏幕支持 720×720 自定义模式。
+  HDMI 线/接口；各 hdmi 模式都依赖屏幕支持对应自定义模式（RTD2660TP 7" 屏
+  1024×600，10.1" 16:10 屏 1280×800，方屏 720×720）。
 - `flow-ui` 使用 tty1 + Xorg + openbox + Chromium；如果用的是 Desktop 镜像，
   安装脚本会把默认 target 切到 `multi-user.target`，否则桌面会和 kiosk 抢显示。
 

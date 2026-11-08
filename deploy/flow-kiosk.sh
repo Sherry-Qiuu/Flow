@@ -44,11 +44,24 @@ fi
 PROFILE="${HOME}/.config/flow-chromium"
 mkdir -p "${PROFILE}"
 
+# Window size follows the panel instead of a hardcoded 720x720: on a
+# 1280x800 10.1" screen a 720 window would leave the canvas off-centre on
+# the first frame. ui.size in config.yaml is the CSS canvas (720x720), so
+# it is not a usable fallback here; FLOW_WINDOW_SIZE="1280,800" overrides.
+WINDOW_SIZE="${FLOW_WINDOW_SIZE:-}"
+if [ -z "${WINDOW_SIZE}" ] && command -v xrandr >/dev/null 2>&1; then
+  WINDOW_SIZE="$(xrandr --current 2>/dev/null \
+    | awk '/ connected/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+/) { print $i; exit } }' \
+    | cut -d+ -f1)"
+fi
+WINDOW_SIZE="${WINDOW_SIZE:-720x720}"
+WINDOW_SIZE="${WINDOW_SIZE/x/,}"
+
 exec "${CHROMIUM}" \
   --kiosk \
   --start-fullscreen \
   --window-position=0,0 \
-  --window-size=720,720 \
+  --window-size="${WINDOW_SIZE}" \
   --force-device-scale-factor=1 \
   --no-first-run \
   --no-default-browser-check \

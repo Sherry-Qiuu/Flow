@@ -287,12 +287,26 @@ USB 摄像头加 `--with-opencv`：
 sudo bash install.sh --display hdmi720 --with-opencv
 ```
 
-如果屏幕不支持 720×720 自定义模式，先不写显示配置：
+**先确认屏幕本身的分辨率，再选模式**（`--display` 决定 Pi 输出什么信号，
+UI 画布固定 720×720，靠 `min(w/720,h/720)` 等比缩放，两种屏都不会溢出）：
+
+| 屏幕 | 模式 | 写入的信号 |
+| --- | --- | --- |
+| 7" 1024×600 屏（RTD2660TP 驱动板，标签 `1024*600/50PTTL`） | `--display hdmi1024x600` | `hdmi_cvt=1024 600 60 6` |
+| 10.1" 16:10 屏（RTD2660 类驱动板） | `--display hdmi1280x800` | `hdmi_cvt=1280 800 60 6` |
+| 7" 方屏，支持自定义模式 | `--display hdmi720` | `hdmi_cvt=720 720 60 6` |
+| DSI 排线屏 | `--display dsi` | 不写模式，保留面板原生 |
+
+非方屏用 720×720 信号会先被驱动板拉伸到面板原生分辨率，画面变形；
+UI 画布保持 1:1，在 1024×600 上是 600×600 居中，两侧留背景。
+
+如果屏幕不接受自定义模式（黑屏/花屏），先不写显示配置：
 
 ```bash
 sudo bash install.sh --display none
-# 起来后确认原生分辨率，再试：
-sudo flow-display hdmi720
+# 起来后确认原生分辨率（EDID 第一条就是面板原生）：
+cat /sys/class/drm/card*-HDMI-A-*/modes | head
+sudo flow-display hdmi1024x600    # 或 hdmi720 / hdmi1280x800
 ```
 
 ### 5.2 配置

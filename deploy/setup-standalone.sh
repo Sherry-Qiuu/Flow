@@ -23,7 +23,8 @@ usage() {
 Usage: sudo bash deploy/setup-standalone.sh [options]
 
 Options:
-  --display hdmi720|dsi|none   boot display mode (default: hdmi720)
+  --display hdmi720|hdmi1024x600|hdmi1280x800|dsi|none
+                               boot display mode (default: hdmi720)
   --home PATH                  install root (default: /opt/flow)
   --user NAME                  service user (default: flow)
   --no-voice                   skip the offline ASR step
@@ -47,8 +48,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "${DISPLAY_MODE}" in
-  hdmi720|dsi|none) ;;
-  *) echo "--display must be hdmi720, dsi or none" >&2; exit 2 ;;
+  hdmi720|hdmi1024x600|hdmi1280x800|dsi|none) ;;
+  *) echo "--display must be hdmi720, hdmi1024x600, hdmi1280x800, dsi or none" >&2; exit 2 ;;
 esac
 
 if [ "$(id -u)" -ne 0 ]; then

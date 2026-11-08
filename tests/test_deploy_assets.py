@@ -63,12 +63,24 @@ def test_install_script_bootstraps_venv_units_and_diag():
 def test_display_and_kiosk_assets():
     display = read("deploy/configure-display.sh")
     assert "hdmi_cvt=720 720 60 6" in display
+    # RTD2660TP panels get their own modes: a 720x720 signal scaled by the
+    # driver board looks stretched (7" 1024*600/50PTTL, 10.1" 1280x800).
+    assert "hdmi_cvt=1024 600 60 6" in display
+    assert "hdmi_cvt=1280 800 60 6" in display
     assert "flow display managed" in display
     kiosk = read("deploy/flow-kiosk.sh")
     assert "--kiosk" in kiosk
-    assert "--window-size=720,720" in kiosk
+    # The window follows the panel; a hardcoded 720 would be wrong on 10.1".
+    assert '--window-size="${WINDOW_SIZE}"' in kiosk
+    assert "xrandr" in kiosk
     assert "xbindkeys" in kiosk
     assert "Control+w" in read("deploy/xbindkeysrc")
+
+
+def test_both_installers_accept_every_display_mode():
+    for script in ("install.sh", "deploy/setup-standalone.sh"):
+        text = read(script)
+        assert "hdmi720|hdmi1024x600|hdmi1280x800|dsi|none) ;;" in text, script
 
 
 def test_diag_collects_journal_config_and_sensor_status():

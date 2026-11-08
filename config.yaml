@@ -41,6 +41,12 @@ logging:
 
 ui:
   url: "http://127.0.0.1:8000"
+  # CSS canvas edge, not the panel resolution: the canvas keeps its 1:1
+  # aspect and scales by min(win_w/720, win_h/720). On the 7" 1024x600
+  # RTD2660TP panel it renders 600x600 centred, with the page background
+  # either side. The panel mode itself is set by
+  # `sudo flow-display hdmi720|hdmi1024x600|hdmi1280x800|dsi`
+  # (see deploy/configure-display.sh).
   size: "720x720"
 
 # T12 LLM main path (拆解)。API key 只从 .env 的 DEEPSEEK_API_KEY 读取，

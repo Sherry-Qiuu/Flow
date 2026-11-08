@@ -305,7 +305,9 @@ assert engine.last_validation.ok
   kiosk、journald 保留策略和 `flow-diag`。
 - 开机顺序为 `flow-hal → flow-backend → flow-ui`；`flow-hal` 是自检预检（跑完退出），
   HAL 由 backend 进程持有，避免双开摄像头/麦克风。
-- `flow-display hdmi720` 写入 720×720 HDMI 模式；`flow-display none` 可回滚。
+- `flow-display hdmi720` 写入 720×720 HDMI 模式，`flow-display hdmi1024x600`
+  写入 7" 1024×600 屏（RTD2660TP）模式，`flow-display hdmi1280x800` 写入
+  10.1" 16:10 屏模式；`flow-display none` 可回滚。
 - `flow-diag` 打包 journal、config、version、device_status、音频/摄像头/I2C 状态，
   不包含 `.env`。
 - 断电重启 90 秒、中文渲染、离线启动这几项必须在真实树莓派上验收，步骤见

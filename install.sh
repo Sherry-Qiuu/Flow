@@ -28,7 +28,8 @@ usage() {
 Usage: sudo bash install.sh [options]
 
 Options:
-  --display hdmi720|dsi|none   boot display mode (default: none)
+  --display hdmi720|hdmi1024x600|hdmi1280x800|dsi|none
+                               boot display mode (default: none)
   --home PATH                  install root (default: /opt/flow)
   --user NAME                  service user (default: flow)
   --no-real                    skip Raspberry Pi hardware extras
@@ -69,8 +70,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "${DISPLAY_MODE}" in
-  hdmi720|dsi|none) ;;
-  *) echo "--display must be hdmi720, dsi or none" >&2; exit 2 ;;
+  hdmi720|hdmi1024x600|hdmi1280x800|dsi|none) ;;
+  *) echo "--display must be hdmi720, hdmi1024x600, hdmi1280x800, dsi or none" >&2; exit 2 ;;
 esac
 
 if [ "$(id -u)" -ne 0 ]; then
